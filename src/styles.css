@@ -50,7 +50,8 @@ html[data-theme='dark'] {
   --gold: #f5c518;
   color-scheme: dark;
 }
-html[data-theme='dark'] .logo-word { color: var(--gold); }
+/* The bird stays yellow in dark mode; the wordmark is black in light mode and white in dark mode. */
+html[data-theme='dark'] .logo-word { color: #ffffff; }
 html[data-theme='dark'] .hero-figure { color: var(--ink); }
 html[data-theme='dark'] .btn-primary { background: #db0011; }
 html[data-theme='dark'] .btn-primary:hover { background: #b0000e; }
@@ -73,7 +74,7 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -0.01em; }
 
 /* ── Logo ── */
 .logo { display: inline-flex; align-items: center; gap: 8px; }
-.logo-word { font-weight: 800; font-size: 19px; letter-spacing: -0.02em; color: var(--ink); }
+.logo-word { font-weight: 800; font-size: 19px; letter-spacing: -0.02em; color: #000000; }
 
 /* ── Buttons & inputs ── */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1.5px solid transparent; border-radius: 999px; padding: 10px 18px; font-weight: 600; font-size: 15px; transition: background .15s, border-color .15s, transform .05s; white-space: nowrap; }
@@ -181,7 +182,7 @@ main { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
 .range-tabs button.on, .seg button.on { background: var(--surface); color: var(--red); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 
 /* ── Category tabs ── */
-.cat-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.cat-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
 .cat-tab { display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); padding: 14px 16px; color: var(--ink); font-weight: 400; transition: border-color .15s, box-shadow .15s; box-shadow: var(--shadow); }
 .cat-tab:hover { border-color: var(--hover-line); }
 .cat-tab.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-soft), var(--shadow); }
@@ -390,7 +391,8 @@ main { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
 .site-footer { background: var(--footer-bg); color: var(--footer-ink); margin-top: 40px; padding-bottom: env(safe-area-inset-bottom); width: 100%; }
 .footer-inner { max-width: 1100px; margin: 0 auto; padding: 32px 20px 28px; display: grid; gap: 0; }
 .site-footer .logo-word { color: var(--footer-ink); }
-html[data-theme='dark'] .site-footer .logo-word { color: var(--gold); }
+/* The footer is dark in both themes, so its wordmark is always white. */
+.site-footer .logo-word, html[data-theme='dark'] .site-footer .logo-word { color: #ffffff; }
 .footer-brand { display: flex; flex-direction: column; gap: 6px; padding-bottom: 20px; }
 .footer-brand p { margin: 0; color: var(--footer-muted); font-size: 14px; }
 .footer-account { display: block; font-size: 24px; font-weight: 700; color: var(--footer-ink); padding: 18px 0 22px; border-top: 1px solid var(--footer-line); border-bottom: 1px solid var(--footer-line); }
@@ -435,6 +437,7 @@ html[data-theme='dark'] .site-footer .logo-word { color: var(--gold); }
   .page { padding: 12px; gap: 12px; }
   .card { padding: 16px; border-radius: 14px; }
   .cat-tabs { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .cat-tab:last-child:nth-child(odd) { grid-column: span 2; }
   .cat-tab { padding: 12px 14px; }
   .cat-tab-value { font-size: 18px; }
   .multi-trend { grid-template-columns: 1fr; }
@@ -468,3 +471,21 @@ html[data-theme='dark'] .site-footer .logo-word { color: var(--gold); }
   .row-chev { display: none; }
   .row-end { font-size: 14.5px; }
 }
+
+/* ── Debts, live prices, price-check links ── */
+.hero-split { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; color: var(--ink-2); }
+.hero-split b { color: var(--ink); font-weight: 700; }
+.hero-split b.neg { color: var(--ink); }
+.value-source { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--bg-2); font-size: 14px; color: var(--ink-2); }
+.value-source .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; box-shadow: 0 0 0 3px var(--green-soft); }
+.value-source a { font-weight: 600; }
+.value-source .stale { color: var(--red-dark); }
+.price-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.price-links a { display: inline-flex; align-items: center; gap: 6px; }
+.rates-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+.rates-table td { padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.rates-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.rates-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.live-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 3px 10px; }
+.live-badge.off { color: var(--muted); background: var(--bg-2); }
+.hpi-card { margin-top: 12px; padding: 12px 14px; border: 1px dashed var(--hover-line); border-radius: 12px; font-size: 14px; display: grid; gap: 8px; }

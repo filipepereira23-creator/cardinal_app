@@ -21,13 +21,14 @@ Pushing to `main` deploys automatically to GitHub Pages (`.github/workflows/depl
 | `src/pages/` | Screens: welcome / sign in / register, account-created confirmation, dashboard, account detail, "what moved", Settings, placeholder About/Privacy/Terms/Contact |
 | `src/components/` | Charts, forms, provider list + open-banking style connect flow, provider logos, header, footer, currency switch |
 | `src/domain/` | Data types and all the maths (values over time, changes, top movers) |
-| `src/config/currencies.ts` | **Fixed FX rates** (GBP, EUR, USD). Edit the numbers to update them |
+| `src/config/currencies.ts`, `src/config/fx.ts` | **10 currencies** (USD, GBP, EUR first) and **live FX**: ECB rates via Frankfurter, fallback open.er-api.com, cached 6 h in localStorage, fixed offline fallback |
 | `src/data/providers.ts` | Every UK bank, ISA manager, platform, workplace pension and crypto exchange (all "coming soon") |
 | `src/data/holdingTypes.ts` | Account and asset types (current account, S&S ISA, workplace pension, watch, car, castle…) |
 | `src/data/sample.ts` | Optional sample portfolio with two years of history |
 | `src/integrations/` | **Placeholder for live provider connections** (Open Banking, pensions, platforms, crypto). `openBanking.ts` holds the consent screen's permission lists and `startConsent()` |
 | `src/integrations/email/` | **Seam for transactional email** (account confirmation). No-op until a backend exists: a static site can't send email |
-| `src/valuation/` | **Placeholder for live asset prices** (Chrono24 for watches, cars, property, gold) |
+| `src/valuation/` | **Live asset prices**: gold/silver/platinum/palladium spot (gold-api.com), property index estimate (HM Land Registry UKHPI + postcodes.io), Chrono24 / Auto Trader / Zoopla check-price links |
+| `src/domain/debts.ts` | **Debts**: structured fields only, plus `anonymisedDebt()` for future anonymous aggregation |
 | `src/storage/` | Accounts and data storage. v1 = browser storage; swap in a hosted backend here |
 
 ## Provider logos
@@ -55,12 +56,13 @@ Net worth growth includes money added or withdrawn, so it isn't an investment re
 Everything you own is a **Holding** (an account or an asset) in GBP, EUR or USD. A holding has a list of
 dated **valuations**, or, for investment and crypto accounts, **positions** (funds, shares, coins) that each
 have their own valuations; the account's value is then the sum of its positions. Net worth on any day is the
-sum of every holding's last known value on or before that day, converted at the fixed rate into the display currency.
+sum of every holding's last known value on or before that day, converted at the current exchange rate into the display currency. Debts (category `debts`) store their outstanding balance as a positive number and count negatively.
 
 ## What's manual today, and where the real thing plugs in
 
 - **Balances**: typed in. Live connections: implement `ProviderConnector` in `src/integrations/`, register it, mark the provider `available`.
-- **Asset prices**: typed in. Live prices: implement `AssetValuer` in `src/valuation/` (Chrono24 for watches first).
+- **Asset prices**: gold and other metals are valued live by weight × purity × spot price. Property gets a Land Registry house price index estimate you can apply. Watches and cars stay manual (Chrono24 has no public API; Auto Trader's valuations API is dealer-only and paid; Zoopla's public API was closed) with a check-price link and an update reminder after 90 days.
 - **Accounts & sync**: v1 stores data in the browser on each device. A hosted backend (e.g. Supabase) behind
   `src/storage/adapter.ts` gives one login with the same data on phone and computer.
-- **FX**: fixed rates in `src/config/currencies.ts`; can be replaced by a daily rates feed with the same `convert()` function.
+- **FX**: live ECB reference rates fetched on load (see `src/config/fx.ts`); Settings shows the date and source.
+- **Debts**: mortgages, loans, car finance, credit cards, student loans and overdrafts are entered by hand and subtract from net worth.

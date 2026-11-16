@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
-import { CURRENCIES, NUMBER_FORMATS, RATES_AS_OF, RATES_IN_GBP, type CurrencyCode } from '../config/currencies';
+import { CURRENCIES, NUMBER_FORMATS, convert, formatMoney, type CurrencyCode } from '../config/currencies';
+import { formatDate } from '../domain/dates';
+import { METALS, spotPerGram } from '../valuation/metals';
 import { RANGES, type RangeId } from '../domain/dates';
 import type { Settings as SettingsT, Theme } from '../domain/types';
-import { Field } from '../components/Forms';
+import { Field, CurrencyOptions } from '../components/Forms';
 import { Icon } from '../components/Icon';
 
 function Section({ title, icon, children, note }: { title: string; icon: string; children: ReactNode; note?: string }) {
@@ -41,8 +43,16 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
   );
 }
 
+/** An exchange rate with four significant decimals, e.g. £0.7577 or ¥210.64. */
+function rateText(v: number, ccy: CurrencyCode): string {
+  const sym = CURRENCIES.find((c) => c.code === ccy)?.symbol ?? '';
+  const dp = v >= 100 ? 2 : v >= 1 ? 4 : 4;
+  return `${sym}${new Intl.NumberFormat('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp }).format(v)}`;
+}
+
 export function SettingsPage() {
-  const { user, settings, updateSettings, updateProfile, currency, setCurrency, exportData, clearAll, deleteAccount, logout, holdings } = useStore();
+  const { user, settings, updateSettings, updateProfile, currency, setCurrency, exportData, clearAll, deleteAccount, logout, holdings, fx, spot, refreshMarket } = useStore();
+  const [refreshing, setRefreshing] = useState(false);
   const [p, setP] = useState({ firstName: user?.firstName ?? '', lastName: user?.lastName ?? '', email: user?.email ?? '' });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const dirty = p.firstName !== user?.firstName || p.lastName !== user?.lastName || p.email !== user?.email;
@@ -93,7 +103,7 @@ export function SettingsPage() {
         <Field label="Theme">
           <Segmented<Theme> label="Theme" value={settings.theme} onChange={(theme) => updateSettings({ theme })} options={[{ id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'System' }]} />
         </Field>
-        <p className="field-hint">In dark mode the Cardinal bird turns yellow.</p>
+        <p className="field-hint">In dark mode the Cardinal bird turns yellow and the wordmark turns white.</p>
       </Section>
 
       <Section title="Display" icon="chart">
@@ -101,7 +111,7 @@ export function SettingsPage() {
           <div className="grid-2">
             <Field label="Default currency">
               <select className="input" value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)}>
-                {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.symbol} {c.name}</option>)}
+                <CurrencyOptions />
               </select>
             </Field>
             <Field label="Default chart period">
@@ -115,8 +125,48 @@ export function SettingsPage() {
           </Field>
           <Toggle label="Show pence and cents" checked={settings.showDecimals} onChange={(showDecimals) => updateSettings({ showDecimals })} />
           <Toggle label="Hide balances" hint="Shows •••• instead of amounts. Handy in public." checked={settings.hideBalances} onChange={(hideBalances) => updateSettings({ hideBalances })} />
-          <p className="field-hint">Fixed rates: €1 = £{RATES_IN_GBP.EUR}, $1 = £{RATES_IN_GBP.USD} · {RATES_AS_OF}</p>
         </div>
+      </Section>
+
+      <Section title="Exchange rates & live prices" icon="chart">
+        <div className="rates-head">
+          <span className={`live-badge ${fx.live ? '' : 'off'}`}>{fx.live ? 'Live' : 'Offline'}</span>
+          <button className="btn btn-ghost btn-sm" disabled={refreshing} onClick={async () => { setRefreshing(true); await refreshMarket(); setRefreshing(false); }}>
+            {refreshing ? 'Refreshing…' : 'Refresh now'}
+          </button>
+        </div>
+        <p className="rates-asof">
+          Rates as of <b>{formatDate(fx.asOf, 'long')}</b>, {fx.sourceUrl ? <a href={fx.sourceUrl} target="_blank" rel="noreferrer">{fx.source}</a> : fx.source}
+          {fx.fetchedAt && <span className="muted small"> · checked {new Date(fx.fetchedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
+        </p>
+        <table className="rates-table" aria-label={`Exchange rates in ${currency}`}>
+          <tbody>
+            {CURRENCIES.filter((c) => c.code !== currency).map((c) => (
+              <tr key={c.code}>
+                <td>{c.code === 'JPY' ? 100 : 1} {c.code} <span className="muted small">{c.name}</span></td>
+                <td>{rateText(convert(c.code === 'JPY' ? 100 : 1, c.code, currency), currency)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="field-hint">Accounts can be entered in any of these {CURRENCIES.length} currencies and are converted at these rates. Without a connection, the last saved rates (or built-in ones) are used.</p>
+        <h3 className="panel-subtitle">Precious metals (spot)</h3>
+        {spot ? (
+          <table className="rates-table">
+            <tbody>
+              {METALS.filter((m) => spot.usdPerOz[m.id]).map((m) => (
+                <tr key={m.id}>
+                  <td>{m.label}</td>
+                  <td>{formatMoney(spotPerGram(m.id, spot, currency) ?? 0, currency)}/g · {formatMoney(convert(spot.usdPerOz[m.id]!, 'USD', currency), currency, { decimals: false })}/oz</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <p className="muted small">Spot prices aren't available right now.</p>}
+        <p className="field-hint">
+          Live: gold, silver, platinum and palladium from <a href="https://gold-api.com" target="_blank" rel="noreferrer">gold-api.com</a>. Property: an estimate from the HM Land Registry house price index.
+          Watches, cars and property listings have no free public price feed (Chrono24, Auto Trader, Zoopla), so those assets link to the site to check and remind you to update.
+        </p>
       </Section>
 
       <Section title="Notifications" icon="bell" note="Coming soon. These need a server to send email or push messages, so they don't do anything yet.">

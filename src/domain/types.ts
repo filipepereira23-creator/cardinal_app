@@ -1,6 +1,9 @@
 import type { CurrencyCode } from '../config/currencies';
 
-export type CategoryId = 'cash' | 'investment' | 'crypto' | 'assets';
+export type CategoryId = 'cash' | 'investment' | 'crypto' | 'assets' | 'debts';
+
+/** Categories that add to net worth. Debts subtract. */
+export const ASSET_CATEGORIES: CategoryId[] = ['cash', 'investment', 'crypto', 'assets'];
 
 /** One recorded value at a point in time (ISO date, YYYY-MM-DD). */
 export interface Valuation {
@@ -12,7 +15,7 @@ export interface Valuation {
  * Where a holding's numbers come from.
  *  - manual: typed in by the user (the only source in v1)
  *  - connected: pulled from a provider via open banking / API (see src/integrations)
- *  - priced: valued by a live price source, e.g. Chrono24 for watches (see src/valuation)
+ *  - priced: valued by a live price source, e.g. the gold spot price (see src/valuation)
  */
 export type DataSource = 'manual' | 'connected' | 'priced';
 
@@ -26,6 +29,22 @@ export interface Position {
 }
 
 /**
+ * Structured terms of a debt. Every field is a number or a fixed id (no free text),
+ * so debts can later be aggregated anonymously (see src/domain/debts.ts).
+ */
+export interface DebtTerms {
+  /** Annual interest rate in %, e.g. 4.29. */
+  interestRate?: number;
+  /** Contractual monthly payment, in the debt's currency. */
+  monthlyPayment?: number;
+}
+
+/**
+ * Anything on the balance sheet: a bank account, an ISA, a pension,
+ * a crypto wallet, a watch, a house... and debts (category 'debts').
+ * A debt's valuations are its outstanding balance as a positive number;
+ * calc.ts applies the minus sign.
+ *
  * Anything that adds to net worth: a bank account, an ISA, a pension,
  * a crypto wallet, a watch, a house...
  *
@@ -52,6 +71,10 @@ export interface Holding {
    * Gains since purchase are only shown when `price` is meaningful (see calc.purchaseGain).
    */
   acquisition?: { price?: number; date?: string; gift?: boolean };
+  /** Debts only: rate and monthly payment. The lender is `providerId`. */
+  debt?: DebtTerms;
+  /** Set when `source` is 'priced': where the latest automatic value came from. */
+  priced?: { source: string; url?: string; asOf: string };
   createdAt: string;
 }
 

@@ -92,6 +92,12 @@ export function samplePortfolio(): Holding[] {
     holding({ category: 'assets', type: 'watch', name: 'Rolex Submariner Date', details: { brand: 'Rolex', model: 'Submariner Date', reference: '126610LN', year: '2021' }, acquisition: { price: 9800, date: addDays(todayISO(), -730) }, valuations: walk(12, 11650, { drift: 0.03, vol: 0.06, lastDay: 0.6, cadence: 30 }) }),
     holding({ category: 'assets', type: 'watch', name: 'Omega Speedmaster Moonwatch', details: { brand: 'Omega', model: 'Speedmaster Professional', reference: '310.30.42.50.01.001', year: '2022' }, acquisition: { gift: true, date: addDays(todayISO(), -700) }, valuations: walk(13, 5480, { drift: 0.01, vol: 0.05, lastDay: 0.3, cadence: 30 }) }),
     holding({ category: 'assets', type: 'car', name: 'Porsche 911 Carrera (997)', details: { make: 'Porsche', model: '911 Carrera 997', year: '2008' }, acquisition: { price: 36500, date: addDays(todayISO(), -730) }, valuations: walk(14, 41500, { drift: 0.04, vol: 0.05, cadence: 60, steps: true }) }),
-    holding({ category: 'assets', type: 'gold', name: 'Gold bars', details: { metal: 'Gold', weight: '100 g' }, valuations: walk(15, 9420, { drift: 0.22, vol: 0.12, lastDay: 0.9, cadence: 14 }) }),
+    // Valued live from the gold spot price (source 'priced'); history up to yesterday is the sample walk.
+    holding({ category: 'assets', type: 'gold', name: 'Gold bars 100 g', source: 'priced', details: { metal: 'XAU', purity: '0.9999', weight: '100', unit: 'g' }, valuations: walk(15, 9420, { drift: 0.22, vol: 0.12, lastDay: 0.9, cadence: 14 }) }),
+
+    // Debts (outstanding balances, positive numbers; they subtract from net worth)
+    holding({ category: 'debts', type: 'student_loan', name: 'Student loan (Plan 2)', providerId: 'student-loans-company', debt: { interestRate: 6.2, monthlyPayment: 160 }, valuations: walk(16, 31240, { drift: 0.03, vol: 0.01, cadence: 30, steps: true }) }),
+    holding({ category: 'debts', type: 'car_finance', name: 'Black Horse car finance', providerId: 'black-horse', debt: { interestRate: 8.9, monthlyPayment: 420 }, valuations: walk(17, 12800, { drift: -0.28, vol: 0.01, cadence: 30, steps: true, startDaysAgo: 700 }) }),
+    holding({ category: 'debts', type: 'credit_card', name: 'American Express Platinum', providerId: 'american-express', debt: { interestRate: 30.7 }, valuations: walk(18, 1284.5, { drift: 0, vol: 0.6, cadence: 30 }) }),
   ];
 }

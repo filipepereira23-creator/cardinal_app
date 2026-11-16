@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { CURRENCIES, type CurrencyCode } from '../config/currencies';
+import { CURRENCIES, formatMoney, type CurrencyCode } from '../config/currencies';
 import { typesFor, typeById } from '../data/holdingTypes';
 import { providersFor, providerById, searchProviders, type Provider } from '../data/providers';
 import type { CategoryId } from '../domain/types';
@@ -7,7 +7,9 @@ import { CATEGORIES } from '../data/categories';
 import { todayISO } from '../domain/dates';
 import { meaningfulBase } from '../domain/calc';
 import { useStore } from '../state/store';
-import { PLANNED_SOURCES } from '../valuation/valuers';
+import { pricingMode } from '../valuation/valuers';
+import { metalValue, spotPerGram, metalSpec, METALS } from '../valuation/metals';
+import type { FieldDef } from '../data/holdingTypes';
 import { Modal } from './Modal';
 import { ProviderMark } from './ProviderMark';
 import { Icon } from './Icon';
@@ -24,6 +26,28 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 
 function parseAmount(s: string): number {
   return Number(s.replace(/[^0-9.\-]/g, ''));
+}
+
+/** One structured detail field: a select when it has fixed options, else a text/number input. */
+export function DetailInput({ f, value, onChange }: { f: FieldDef; value: string; onChange: (v: string) => void }) {
+  if (f.options) {
+    return (
+      <select className="input" value={value} onChange={(e) => onChange(e.target.value)} aria-label={f.label}>
+        {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    );
+  }
+  return <input className="input" inputMode={f.numeric ? 'decimal' : undefined} placeholder={f.placeholder} value={value} onChange={(e) => onChange(e.target.value)} aria-label={f.label} />;
+}
+
+/** Defaults for option fields, so a select's first choice is stored even if untouched. */
+export function detailDefaults(fields?: FieldDef[]): Record<string, string> {
+  return Object.fromEntries((fields ?? []).filter((f) => f.options?.length).map((f) => [f.key, f.options![0].value]));
+}
+
+/** Every currency, USD, GBP and EUR first. */
+export function CurrencyOptions() {
+  return <>{CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>)}</>;
 }
 
 export function AmountInput({ value, onChange, currency, autoFocus, required = false, placeholder = '0.00' }: { value: string; onChange: (s: string) => void; currency: CurrencyCode; autoFocus?: boolean; required?: boolean; placeholder?: string }) {
@@ -80,7 +104,7 @@ function ProviderPicker({ providers, value, onChange }: { providers: Provider[];
 
 /** Add an account or asset by hand. */
 export function AddHoldingModal({ category, providerId, onClose, onAdded }: { category: CategoryId; providerId?: string; onClose: () => void; onAdded?: (id: string) => void }) {
-  const { addHolding, currency: displayCcy } = useStore();
+  const { addHolding, currency: displayCcy, spot } = useStore();
   const types = typesFor(category);
   const presetProvider = providerById(providerId);
   const initialType = presetProvider ? types.find((t) => t.providerKinds.some((k) => presetProvider.kinds.includes(k)))?.id ?? types[0].id : types[0].id;
@@ -94,15 +118,30 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
   const [buyPrice, setBuyPrice] = useState('');
   const [buyDate, setBuyDate] = useState('');
   const [gift, setGift] = useState(false);
+  const [rate, setRate] = useState('');
+  const [monthly, setMonthly] = useState('');
+  const [livePrice, setLivePrice] = useState(true);
   const [err, setErr] = useState('');
   const type = typeById(typeId)!;
+  const isDebtCat = category === 'debts';
+  // Only this type's fields, with select defaults filled in.
+  const allDetails: Record<string, string> = Object.fromEntries(
+    (type.fields ?? []).map((f) => [f.key, details[f.key] ?? detailDefaults(type.fields)[f.key] ?? '']).filter(([, v]) => v !== ''),
+  );
+  const liveValue = pricingMode(typeId) === 'live' ? metalValue({ details: allDetails }, spot, ccy) : null;
+  const useLive = livePrice && liveValue !== null;
   const providers = useMemo(() => providersFor(type.providerKinds), [type]);
   const cat = CATEGORIES.find((c) => c.id === category)!;
 
   const autoName = () => {
+    if (typeId === 'gold') {
+      const spec = metalSpec({ details: allDetails });
+      const metal = METALS.find((m) => m.id === allDetails.metal)?.label ?? 'Metal';
+      return spec ? `${metal} ${allDetails.weight} ${allDetails.unit}` : metal;
+    }
     if (type.fields?.length) {
       const f = details;
-      const parts = [f.brand || f.make || f.metal || f.artist, f.model || f.weight || f.location || f.description].filter(Boolean);
+      const parts = [f.brand || f.make || f.artist, f.model || f.address || f.location || f.description].filter(Boolean);
       if (parts.length) return parts.join(' ');
     }
     const p = providerById(prov);
@@ -111,9 +150,14 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const v = parseAmount(amount);
-    if (!amount || Number.isNaN(v)) return setErr('Enter the current value.');
-    const valuations = [{ date, value: v }];
+    const v = useLive ? liveValue! : parseAmount(amount);
+    if (!useLive && (!amount || Number.isNaN(v))) return setErr(isDebtCat ? 'Enter the outstanding balance.' : 'Enter the current value.');
+    if (isDebtCat && v < 0) return setErr('Enter the balance you owe as a positive number.');
+    const r = rate.trim() ? parseAmount(rate) : undefined;
+    const m = monthly.trim() ? parseAmount(monthly) : undefined;
+    if (r !== undefined && (Number.isNaN(r) || r < 0 || r > 100)) return setErr('Interest rate should be a % between 0 and 100, or leave it blank.');
+    if (m !== undefined && (Number.isNaN(m) || m < 0)) return setErr('Monthly payment should be a number, or leave it blank.');
+    const valuations = [{ date: useLive ? todayISO() : date, value: v }];
     const bp = buyPrice.trim() ? parseAmount(buyPrice) : undefined;
     if (bp !== undefined && (Number.isNaN(bp) || bp < 0)) return setErr('Purchase price should be a number, or leave it blank.');
     // Only draw history from the purchase price if it's a real price. A £0 or £1 gift would make the chart and % meaningless.
@@ -125,11 +169,12 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
       name: name.trim() || autoName(),
       providerId: prov,
       currency: ccy,
-      source: 'manual',
+      source: useLive ? 'priced' : 'manual',
       valuations,
       positions: [],
-      details: type.fields ? details : undefined,
+      details: type.fields ? allDetails : undefined,
       acquisition,
+      debt: isDebtCat ? { interestRate: r, monthlyPayment: m } : undefined,
     });
     onAdded?.(h.id);
     onClose();
@@ -156,7 +201,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
           </div>
         </Field>
         {type.providerKinds.length > 0 && (
-          <Field label="Provider">
+          <Field label={isDebtCat ? 'Lender (optional)' : 'Provider'}>
             <ProviderPicker providers={providers} value={prov} onChange={setProv} />
           </Field>
         )}
@@ -164,33 +209,66 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
           <div className="grid-2">
             {type.fields.map((f) => (
               <Field key={f.key} label={f.label}>
-                <input className="input" placeholder={f.placeholder} value={details[f.key] ?? ''} onChange={(e) => setDetails({ ...details, [f.key]: e.target.value })} />
+                <DetailInput f={f} value={allDetails[f.key] ?? ''} onChange={(v) => setDetails({ ...details, [f.key]: v })} />
               </Field>
             ))}
+          </div>
+        )}
+        {pricingMode(typeId) === 'live' && (
+          <div className="value-source">
+            {spot ? (
+              <>
+                <label className="check-row">
+                  <input type="checkbox" checked={livePrice} onChange={(e) => setLivePrice(e.target.checked)} />
+                  <span>Value it automatically from the live spot price</span>
+                </label>
+                {liveValue !== null ? (
+                  <span><span className="live-dot" />Worth <b>{formatMoney(liveValue, ccy)}</b> today · spot {formatMoney(spotPerGram(metalSpec({ details: allDetails })!.metal, spot, ccy) ?? 0, ccy)}/g</span>
+                ) : (
+                  <span className="muted">Enter a weight to value it live.</span>
+                )}
+              </>
+            ) : (
+              <span className="muted">The live spot price isn't available right now, so type in today's value.</span>
+            )}
           </div>
         )}
         <Field label="Name" hint="Leave blank and we'll name it for you.">
           <input className="input" placeholder={autoName()} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <div className="grid-2">
-          <Field label={category === 'assets' ? 'Current value' : 'Current balance'}>
-            <AmountInput value={amount} onChange={setAmount} currency={ccy} required />
-          </Field>
+          {!useLive && (
+            <Field label={isDebtCat ? 'Outstanding balance' : category === 'assets' ? 'Current value' : 'Current balance'}>
+              <AmountInput value={amount} onChange={setAmount} currency={ccy} required />
+            </Field>
+          )}
           <Field label="Currency">
             <select className="input" value={ccy} onChange={(e) => setCcy(e.target.value as CurrencyCode)}>
-              {CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.symbol} {c.name}</option>
-              ))}
+              <CurrencyOptions />
             </select>
           </Field>
         </div>
-        <Field label="Value as of">
-          <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
-        </Field>
+        {isDebtCat && (
+          <div className="grid-2">
+            <Field label="Interest rate (optional)" hint="Annual rate, e.g. 4.29">
+              <div className="amount-input"><input inputMode="decimal" placeholder="0.00" value={rate} onChange={(e) => setRate(e.target.value)} /><span>%</span></div>
+            </Field>
+            <Field label="Monthly payment (optional)">
+              <AmountInput value={monthly} onChange={setMonthly} currency={ccy} placeholder="0.00" />
+            </Field>
+          </div>
+        )}
+        {!useLive && (
+          <Field label={isDebtCat ? 'Balance as of' : 'Value as of'}>
+            <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+        )}
         {category === 'assets' && (
           <AcquisitionFields currency={ccy} price={buyPrice} setPrice={setBuyPrice} date={buyDate} setDate={setBuyDate} gift={gift} setGift={setGift} maxDate={date} />
         )}
-        {PLANNED_SOURCES[typeId] && <p className="field-hint">Live pricing from {PLANNED_SOURCES[typeId]} is coming soon. Until then, type in today's value.</p>}
+        {pricingMode(typeId) === 'link' && <p className="field-hint">There's no free live price feed for this, so type in today's value. Once it's added you'll get a link to check the market price and a reminder to update it.</p>}
+        {pricingMode(typeId) === 'index' && <p className="field-hint">Add the postcode and Cardinal can suggest an updated value from the HM Land Registry house price index.</p>}
+        {isDebtCat && <p className="field-hint">Debts subtract from your net worth. Only structured details are kept (type, lender, balance, rate) — no account numbers needed.</p>}
         {type.allowsPositions && <p className="field-hint">You can add the individual funds, shares or coins inside it once it's added.</p>}
         {err && <p className="error">{err}</p>}
         <div className="form-actions">

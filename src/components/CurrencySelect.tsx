@@ -9,7 +9,7 @@ export function CurrencySelect() {
       <select value={currency} onChange={(e) => setCurrency(e.target.value as CurrencyCode)}>
         {CURRENCIES.map((c) => (
           <option key={c.code} value={c.code}>
-            {c.symbol} {c.code}
+            {c.code} {c.symbol.trim() !== c.code ? c.symbol.trim() : ''}
           </option>
         ))}
       </select>

@@ -1,31 +1,35 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
-import { buildSeries, holdingChange, holdingValue, holdingValueOn, positionChange, positionValue, purchaseGain, rangeStart, valueOn } from '../domain/calc';
+import { buildSeries, daysBetween, holdingChange, holdingValue, holdingValueOn, lastUpdated, positionChange, positionValue, purchaseGain, rangeStart, rawValueOn, valueOn } from '../domain/calc';
 import { convert, formatMoney, formatPct, type CurrencyCode } from '../config/currencies';
-import { formatDate, RANGES } from '../domain/dates';
+import { formatDate, RANGES, todayISO } from '../domain/dates';
 import { providerById } from '../data/providers';
 import { typeById } from '../data/holdingTypes';
 import { CATEGORIES } from '../data/categories';
-import { PLANNED_SOURCES } from '../valuation/valuers';
+import { AUTOTRADER_VALUATION_URL, STALE_AFTER_DAYS, goldQuote, priceCheckLink, pricingMode } from '../valuation/valuers';
+import { metalSpec, spotPerGram } from '../valuation/metals';
+import { hpiEstimate, type HpiEstimate } from '../valuation/houseIndex';
 import { AreaTrend } from '../components/Charts';
 import { ChangePill, GrowthStats, Money } from '../components/Money';
 import { RangeTabs } from '../components/RangeTabs';
 import { ProviderMark } from '../components/ProviderMark';
 import { Icon } from '../components/Icon';
-import { AddPositionModal, UpdateValueModal, Field, AcquisitionFields } from '../components/Forms';
+import { AddPositionModal, UpdateValueModal, Field, AcquisitionFields, DetailInput, detailDefaults } from '../components/Forms';
+import type { FieldDef } from '../data/holdingTypes';
 import { Modal } from '../components/Modal';
 import type { Holding, Position } from '../domain/types';
 
 export function HoldingDetail({ id }: { id: string }) {
-  const { holdings, currency, range, addValuation, deleteValuation, deleteHolding, updateHolding, deletePosition } = useStore();
+  const { holdings, currency, range, addValuation, deleteValuation, deleteHolding, updateHolding, deletePosition, marketVersion, spot } = useStore();
   const h = holdings.find((x) => x.id === id);
   const [updating, setUpdating] = useState<{ position?: Position } | null>(null);
   const [addingPos, setAddingPos] = useState(false);
   const [editing, setEditing] = useState(false);
   const [openPos, setOpenPos] = useState<string | null>(null);
   const start = rangeStart(range, holdings);
-  const series = useMemo(() => (h ? buildSeries(start, { total: (d) => convert(holdingValueOn(h, d), h.currency, currency) }) : []), [h, start, currency]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const series = useMemo(() => (h ? buildSeries(start, { total: (d) => convert(holdingValueOn(h, d), h.currency, currency) }) : []), [h, start, currency, marketVersion]);
 
   if (!h) {
     return (
@@ -44,10 +48,25 @@ export function HoldingDetail({ id }: { id: string }) {
   const v = holdingValue(h, currency);
   const ch = holdingChange(h, currency, start);
   const native = holdingValueOn(h, '9999-12-31');
+  const raw = rawValueOn(h, '9999-12-31');
+  const isDebt = h.category === 'debts';
+  const priced = h.source === 'priced';
   const desc = RANGES.find((r) => r.id === range)!.desc;
   const rangeLabel = RANGES.find((r) => r.id === range)!.label;
   const positions = [...h.positions].sort((a, b) => valueOn(b.valuations, '9999') - valueOn(a.valuations, '9999'));
-  const detailEntries = Object.entries(h.details ?? {}).filter(([, val]) => val);
+  const fieldLabel = (k: string, val: string) => {
+    const f = t?.fields?.find((x) => x.key === k);
+    return { label: f?.label ?? k, value: f?.options?.find((o) => o.value === val)?.label ?? val };
+  };
+  const detailEntries: [string, string][] = Object.entries(h.details ?? {}).filter(([, val]) => val).map(([k, val]) => {
+    const x = fieldLabel(k, val);
+    return [x.label, x.value];
+  });
+  if (isDebt) {
+    if (p) detailEntries.unshift(['Lender', p.name]);
+    if (h.debt?.interestRate !== undefined) detailEntries.push(['Interest rate', `${h.debt.interestRate}% a year`]);
+    if (h.debt?.monthlyPayment !== undefined) detailEntries.push(['Monthly payment', formatMoney(h.debt.monthlyPayment, h.currency)]);
+  }
   const history = [...h.valuations].reverse();
 
   return (
@@ -65,8 +84,9 @@ export function HoldingDetail({ id }: { id: string }) {
         </div>
         <div className="hero-top">
           <div>
+            {isDebt && <div className="eyebrow">Outstanding balance · counts against net worth</div>}
             <div className="hero-figure"><Money value={v} ccy={currency} /></div>
-            {h.currency !== currency && <div className="muted small">{formatMoney(native, h.currency)} at the fixed rate</div>}
+            {h.currency !== currency && <div className="muted small">{formatMoney(native, h.currency)} at today's exchange rate</div>}
             <div className="hero-change">
               <ChangePill change={ch} ccy={currency} />
               <span className="muted small">{desc}</span>
@@ -77,15 +97,21 @@ export function HoldingDetail({ id }: { id: string }) {
         <AreaTrend series={series} ccy={currency} height={200} />
         <GrowthStats change={ch} periodLabel={rangeLabel} />
         {h.category === 'assets' && <PurchaseInfo h={h} ccy={currency} onEdit={() => setEditing(true)} />}
+        {h.category === 'assets' && <ValueSource h={h} />}
         <div className="detail-actions">
-          {!h.positions.length && (
-            <button className="btn btn-primary" onClick={() => setUpdating({})}>Update value</button>
+          {!h.positions.length && !priced && (
+            <button className="btn btn-primary" onClick={() => setUpdating({})}>{isDebt ? 'Update balance' : 'Update value'}</button>
+          )}
+          {h.type === 'gold' && priced && (
+            <button className="btn btn-outline" onClick={() => updateHolding(h.id, { source: 'manual', priced: undefined })}>Switch to a value I type in</button>
+          )}
+          {h.type === 'gold' && !priced && metalSpec(h) && spot && (
+            <button className="btn btn-outline" onClick={() => updateHolding(h.id, { source: 'priced' })}><span className="live-dot" /> Value it from the live spot price</button>
           )}
           {t?.allowsPositions && (
             <button className={`btn ${h.positions.length ? 'btn-primary' : 'btn-outline'}`} onClick={() => setAddingPos(true)}><Icon name="plus" size={16} /> Add fund, share or coin</button>
           )}
         </div>
-        {PLANNED_SOURCES[h.type] && <p className="field-hint">Live value from {PLANNED_SOURCES[h.type]} is coming soon. For now, update it by hand.</p>}
       </section>
 
       {positions.length > 0 && (
@@ -135,7 +161,7 @@ export function HoldingDetail({ id }: { id: string }) {
               <dl className="details">
                 {detailEntries.map(([k, val]) => (
                   <div key={k}>
-                    <dt>{t?.fields?.find((f) => f.key === k)?.label ?? k}</dt>
+                    <dt>{k}</dt>
                     <dd>{val}</dd>
                   </div>
                 ))}
@@ -144,7 +170,7 @@ export function HoldingDetail({ id }: { id: string }) {
           )}
           {history.length > 0 && (
             <>
-              <h3 className="panel-subtitle">Value history</h3>
+              <h3 className="panel-subtitle">{isDebt ? 'Balance history' : 'Value history'}</h3>
               <History currency={h.currency} items={history} onDelete={(d) => deleteValuation(h.id, d)} />
             </>
           )}
@@ -161,7 +187,7 @@ export function HoldingDetail({ id }: { id: string }) {
         <UpdateValueModal
           title={`Update ${updating.position?.name ?? h.name}`}
           currency={h.currency}
-          current={updating.position ? valueOn(updating.position.valuations, '9999') : native}
+          current={updating.position ? valueOn(updating.position.valuations, '9999') : raw}
           onSave={(date, value) => addValuation(h.id, { date, value }, updating.position?.id)}
           onClose={() => setUpdating(null)}
         />
@@ -173,9 +199,10 @@ export function HoldingDetail({ id }: { id: string }) {
           details={h.details ?? {}}
           fields={t?.fields ?? []}
           acquisition={h.category === 'assets' ? h.acquisition ?? {} : undefined}
+          debt={isDebt ? h.debt ?? {} : undefined}
           currency={h.currency}
           onClose={() => setEditing(false)}
-          onSave={(name, details, acquisition) => updateHolding(h.id, { name, details, ...(acquisition !== undefined ? { acquisition } : {}) })}
+          onSave={(name, details, acquisition, debt) => updateHolding(h.id, { name, details, ...(acquisition !== undefined ? { acquisition } : {}), ...(debt !== undefined ? { debt } : {}) })}
         />
       )}
     </div>
@@ -235,9 +262,13 @@ function PurchaseInfo({ h, ccy, onEdit }: { h: Holding; ccy: CurrencyCode; onEdi
 
 type Acq = NonNullable<Holding['acquisition']>;
 
-function EditModal({ name, details, fields, acquisition, currency, onSave, onClose }: { name: string; details: Record<string, string>; fields: { key: string; label: string; placeholder?: string }[]; acquisition?: Acq; currency: CurrencyCode; onSave: (n: string, d: Record<string, string>, a?: Acq) => void; onClose: () => void }) {
+type Debt = NonNullable<Holding['debt']>;
+
+function EditModal({ name, details, fields, acquisition, debt, currency, onSave, onClose }: { name: string; details: Record<string, string>; fields: FieldDef[]; acquisition?: Acq; debt?: Debt; currency: CurrencyCode; onSave: (n: string, d: Record<string, string>, a?: Acq, debt?: Debt) => void; onClose: () => void }) {
   const [n, setN] = useState(name);
-  const [d, setD] = useState(details);
+  const [d, setD] = useState({ ...detailDefaults(fields), ...details });
+  const [rate, setRate] = useState(debt?.interestRate !== undefined ? String(debt.interestRate) : '');
+  const [monthly, setMonthly] = useState(debt?.monthlyPayment !== undefined ? String(debt.monthlyPayment) : '');
   const [price, setPrice] = useState(acquisition?.price !== undefined ? String(acquisition.price) : '');
   const [date, setDate] = useState(acquisition?.date ?? '');
   const [gift, setGift] = useState(!!acquisition?.gift);
@@ -254,16 +285,29 @@ function EditModal({ name, details, fields, acquisition, currency, onSave, onClo
             if (p !== undefined && (Number.isNaN(p) || p < 0)) return setErr('Purchase price should be a number, or leave it blank.');
             acq = { price: gift ? undefined : p, date: date || undefined, gift: gift || undefined };
           }
-          onSave(n.trim() || name, d, acq);
+          let dt: Debt | undefined;
+          if (debt) {
+            const r = rate.trim() ? Number(rate.replace(/[^0-9.]/g, '')) : undefined;
+            const m = monthly.trim() ? Number(monthly.replace(/[^0-9.]/g, '')) : undefined;
+            if ((r !== undefined && (Number.isNaN(r) || r > 100)) || (m !== undefined && Number.isNaN(m))) return setErr('Rate and monthly payment should be numbers, or leave them blank.');
+            dt = { interestRate: r, monthlyPayment: m };
+          }
+          onSave(n.trim() || name, d, acq, dt);
           onClose();
         }}
       >
         <Field label="Name"><input className="input" value={n} onChange={(e) => setN(e.target.value)} autoFocus /></Field>
         {fields.map((f) => (
           <Field key={f.key} label={f.label}>
-            <input className="input" placeholder={f.placeholder} value={d[f.key] ?? ''} onChange={(e) => setD({ ...d, [f.key]: e.target.value })} />
+            <DetailInput f={f} value={d[f.key] ?? ''} onChange={(v) => setD({ ...d, [f.key]: v })} />
           </Field>
         ))}
+        {debt && (
+          <div className="grid-2">
+            <Field label="Interest rate (%)"><input className="input" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="Optional" /></Field>
+            <Field label="Monthly payment"><input className="input" inputMode="decimal" value={monthly} onChange={(e) => setMonthly(e.target.value)} placeholder="Optional" /></Field>
+          </div>
+        )}
         {acquisition && <AcquisitionFields currency={currency} price={price} setPrice={setPrice} date={date} setDate={setDate} gift={gift} setGift={setGift} />}
         {err && <p className="error">{err}</p>}
         <div className="form-actions">
@@ -272,5 +316,75 @@ function EditModal({ name, details, fields, acquisition, currency, onSave, onClo
         </div>
       </form>
     </Modal>
+  );
+}
+
+/**
+ * Where an asset's value comes from: live spot price (gold), a Land Registry index
+ * estimate (property), or a "check the market" link plus a last-updated reminder.
+ */
+function ValueSource({ h }: { h: Holding }) {
+  const { spot, currency } = useStore();
+  const mode = pricingMode(h.type);
+  const updated = lastUpdated(h);
+  const age = updated ? daysBetween(updated, todayISO()) : 0;
+  const link = priceCheckLink(h);
+
+  if (h.type === 'gold' && h.source === 'priced') {
+    const q = goldQuote(h, spot);
+    const spec = metalSpec(h);
+    const perG = spec ? spotPerGram(spec.metal, spot, currency) : null;
+    return (
+      <div className="value-source">
+        <span><span className="live-dot" />Valued live from the spot price{perG !== null ? ` (${formatMoney(perG, currency)}/g)` : ''}{spec ? ` × ${+spec.grams.toFixed(2)} g × ${(spec.purity * 100).toFixed(2).replace(/\.?0+$/, '')}% pure` : ''}</span>
+        <span className="muted">{q ? `Updated ${new Date(q.asOf).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ` : 'Waiting for a price · '}<a href="https://gold-api.com" target="_blank" rel="noreferrer">gold-api.com</a></span>
+      </div>
+    );
+  }
+
+  const stale = mode !== 'live' && age > STALE_AFTER_DAYS;
+  return (
+    <>
+      <div className="value-source">
+        <span>Last updated {updated ? formatDate(updated, 'long') : 'never'}{stale ? <span className="stale"> · it's been {Math.round(age / 30)} months, worth a quick check</span> : ''}</span>
+        {link && (
+          <span className="price-links">
+            <a href={link.url} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> {link.label}</a>
+            {h.type === 'car' && <a href={AUTOTRADER_VALUATION_URL} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free Auto Trader valuation</a>}
+          </span>
+        )}
+      </div>
+      {mode === 'index' && <HpiSuggestion h={h} />}
+    </>
+  );
+}
+
+function HpiSuggestion({ h }: { h: Holding }) {
+  const { addValuation, currency } = useStore();
+  const [est, setEst] = useState<HpiEstimate | null | 'loading'>('loading');
+  const key = `${h.details?.postcode}|${h.valuations.length}|${h.valuations[h.valuations.length - 1]?.date}`;
+  useEffect(() => {
+    let live = true;
+    setEst('loading');
+    hpiEstimate(h).then((e) => live && setEst(e)).catch(() => live && setEst(null));
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  if (!h.details?.postcode) return <p className="field-hint">Add a postcode (Edit) to get a house price index estimate.</p>;
+  if (est === 'loading') return <p className="field-hint">Checking the HM Land Registry house price index…</p>;
+  if (!est) return <p className="field-hint">No house price index data for this postcode right now.</p>;
+  const month = (m: string) => new Date(m + '-01T00:00:00Z').toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const same = est.fromMonth === est.toMonth;
+  return (
+    <div className="hpi-card">
+      <div>
+        <b>House price index estimate:</b>{' '}
+        {same
+          ? <>no newer index data since your last value ({month(est.toMonth)} is the latest published for {est.area}).</>
+          : <>{formatMoney(convert(est.value, h.currency, currency), currency, { decimals: false })} — {est.area} prices moved {formatPct(est.changePct)} from {month(est.fromMonth)} to {month(est.toMonth)}.</>}
+      </div>
+      <span className="muted small">HM Land Registry UK House Price Index, an area average for all property types; it lags about two months. <a href={est.url} target="_blank" rel="noreferrer">Source</a></span>
+      {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: est.value })}>Use this estimate</button></div>}
+    </div>
   );
 }

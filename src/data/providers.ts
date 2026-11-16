@@ -4,7 +4,7 @@
  * built, change its `status` to 'available' and register a connector in
  * src/integrations/registry.ts under the same `id`.
  */
-export type ProviderKind = 'bank' | 'isa' | 'investment' | 'pension_workplace' | 'pension_personal' | 'crypto';
+export type ProviderKind = 'bank' | 'isa' | 'investment' | 'pension_workplace' | 'pension_personal' | 'crypto' | 'lender';
 export type ProviderStatus = 'coming_soon' | 'available';
 
 export interface Provider {
@@ -192,6 +192,31 @@ const ROWS: Row[] = [
   ['Exodus', '#1F2033', ['crypto'], 'exodus.com'],
   ['Trust Wallet', '#3375BB', ['crypto'], 'trustwallet.com'],
   ['Phantom', '#AB9FF2', ['crypto'], 'phantom.app'],
+  // ── Lenders, card issuers & finance houses (for Debts) ─────────
+  ['American Express', '#006FCF', ['lender'], 'americanexpress.com'],
+  ['Barclaycard', '#00AEEF', ['lender'], 'barclaycard.co.uk'],
+  ['Capital One UK', '#004879', ['lender'], 'capitalone.co.uk'],
+  ['MBNA', '#0B3D91', ['lender'], 'mbna.co.uk'],
+  ['Vanquis', '#00A0DF', ['lender'], 'vanquis.co.uk'],
+  ['NewDay (Aqua, Marbles)', '#00263E', ['lender'], 'newday.co.uk'],
+  ['Black Horse', '#006A4D', ['lender'], 'blackhorse.co.uk'],
+  ['Santander Consumer Finance', '#EC0000', ['lender'], 'santanderconsumer.co.uk'],
+  ['Close Brothers Motor Finance', '#00205B', ['lender'], 'closebrothers.com'],
+  ['Novuna', '#E4002B', ['lender'], 'novuna.co.uk'],
+  ['Moneybarn', '#F26522', ['lender'], 'moneybarn.com'],
+  ['BMW Financial Services', '#1C69D4', ['lender'], 'bmwfs.co.uk'],
+  ['Volkswagen Financial Services', '#001E50', ['lender'], 'vwfs.co.uk'],
+  ['Mercedes-Benz Finance', '#000000', ['lender'], 'mercedes-benz.co.uk'],
+  ['Porsche Financial Services', '#B12B28', ['lender'], 'porsche.com'],
+  ['Student Loans Company', '#1D70B8', ['lender'], 'gov.uk'],
+  ['Klarna', '#FFB3C7', ['lender'], 'klarna.com'],
+  ['PayPal Credit', '#003087', ['lender'], 'paypal.com'],
+  ['Funding Circle', '#00B67A', ['lender'], 'fundingcircle.com'],
+  ['Together Money', '#E5007E', ['lender'], 'togethermoney.com'],
+  ['Kensington Mortgages', '#00395D', ['lender'], 'kensingtonmortgages.co.uk'],
+  ['Pepper Money', '#E30613', ['lender'], 'pepper.money'],
+  ['Accord Mortgages', '#00467F', ['lender'], 'accordmortgages.com'],
+  ['Platform (Co-op Bank)', '#00B1E7', ['lender'], 'platform.co.uk'],
 ];
 
 function slug(s: string): string {
@@ -237,4 +262,5 @@ export const KIND_LABELS: Record<ProviderKind, string> = {
   pension_workplace: 'Workplace pensions',
   pension_personal: 'Personal pensions & SIPPs',
   crypto: 'Crypto exchanges & wallets',
+  lender: 'Lenders & card issuers',
 };

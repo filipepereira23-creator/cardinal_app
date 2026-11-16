@@ -16,10 +16,21 @@ export function sortValuations(v: Valuation[]): Valuation[] {
   return [...v].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** A holding's value in its own currency on a date. */
-export function holdingValueOn(h: Holding, date: string): number {
+/** Debts count against net worth. */
+export function isDebt(h: Pick<Holding, 'category'>): boolean {
+  return h.category === 'debts';
+}
+
+/** What was entered, unsigned: a balance, a value, or a debt's outstanding amount, in its own currency. */
+export function rawValueOn(h: Holding, date: string): number {
   if (h.positions.length) return h.positions.reduce((s, p) => s + valueOn(p.valuations, date), 0);
   return valueOn(h.valuations, date);
+}
+
+/** A holding's contribution to net worth in its own currency on a date (negative for debts). */
+export function holdingValueOn(h: Holding, date: string): number {
+  const v = rawValueOn(h, date);
+  return isDebt(h) ? -v : v;
 }
 
 export function holdingValue(h: Holding, ccy: CurrencyCode, date = todayISO()): number {
@@ -27,7 +38,12 @@ export function holdingValue(h: Holding, ccy: CurrencyCode, date = todayISO()): 
 }
 
 export function positionValue(p: Position, h: Holding, ccy: CurrencyCode, date = todayISO()): number {
-  return convert(valueOn(p.valuations, date), h.currency, ccy);
+  return convert(valueOn(p.valuations, date), h.currency, ccy) * (isDebt(h) ? -1 : 1);
+}
+
+/** Total of everything that adds to net worth (before debts). */
+export function grossAssets(holdings: Holding[], ccy: CurrencyCode, date = todayISO()): number {
+  return holdings.filter((h) => !isDebt(h)).reduce((s, h) => s + holdingValue(h, ccy, date), 0);
 }
 
 export function categoryValue(holdings: Holding[], cat: CategoryId, ccy: CurrencyCode, date = todayISO()): number {
@@ -36,6 +52,12 @@ export function categoryValue(holdings: Holding[], cat: CategoryId, ccy: Currenc
 
 export function totalValue(holdings: Holding[], ccy: CurrencyCode, date = todayISO()): number {
   return holdings.reduce((s, h) => s + holdingValue(h, ccy, date), 0);
+}
+
+/** Date of the most recent value recorded for a holding (or any of its positions). */
+export function lastUpdated(h: Holding): string | null {
+  const dates = [h.valuations, ...h.positions.map((p) => p.valuations)].map((v) => v[v.length - 1]?.date).filter(Boolean) as string[];
+  return dates.sort().pop() ?? null;
 }
 
 /** Earliest date any value was recorded. */
@@ -147,8 +169,8 @@ export function totalChange(holdings: Holding[], ccy: CurrencyCode, start: strin
  */
 export function purchaseGain(h: Holding, ccy: CurrencyCode): Change | null {
   const a = h.acquisition;
-  if (!a || a.gift || a.price === undefined) return null;
-  const now = holdingValueOn(h, todayISO());
+  if (!a || a.gift || a.price === undefined || isDebt(h)) return null;
+  const now = rawValueOn(h, todayISO());
   if (!meaningfulBase(a.price, now) || a.price < 100) return null;
   const days = a.date ? daysBetween(a.date, todayISO()) : 0;
   return change(convert(a.price, h.currency, ccy), convert(now, h.currency, ccy), days);

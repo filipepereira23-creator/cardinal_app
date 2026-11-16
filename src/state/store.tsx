@@ -7,6 +7,11 @@ import { auth, storage } from '../storage';
 import { uid } from '../storage/local';
 import { samplePortfolio } from '../data/sample';
 import { email } from '../integrations/email';
+import { fxIsFresh, initialFx, loadLiveFx, type FxInfo } from '../config/fx';
+import { loadSpot, readCachedSpot, spotIsFresh, type SpotPrices } from '../valuation/metals';
+import { goldQuote } from '../valuation/valuers';
+import { todayISO } from '../domain/dates';
+import { isCurrency } from '../config/currencies';
 
 const THEME_KEY = 'cardinal.theme.v1';
 
@@ -57,9 +62,24 @@ interface Store {
   exportData(): string;
   /** Whether a confirmation email actually went out for the account just created (false until a backend exists). */
   confirmationEmailSent: boolean | null;
+  /** Exchange rates in use (live, cached, or the offline fallback). */
+  fx: FxInfo;
+  /** Live precious-metal spot prices, or null when unavailable. */
+  spot: SpotPrices | null;
+  /** Bumps whenever rates or prices change, so memoised charts recompute. */
+  marketVersion: number;
+  refreshMarket(): Promise<void>;
 }
 
 const Ctx = createContext<Store | null>(null);
+
+/** Older saves (or hand-edited data) may hold a currency no longer offered; fall back to GBP. */
+function clean(p: Portfolio): Portfolio {
+  return {
+    displayCurrency: isCurrency(p.displayCurrency) ? p.displayCurrency : 'GBP',
+    holdings: (p.holdings ?? []).map((h) => (isCurrency(h.currency) ? h : { ...h, currency: 'GBP' as CurrencyCode })),
+  };
+}
 
 function upsert(vals: Valuation[], v: Valuation): Valuation[] {
   return sortValuations([...vals.filter((x) => x.date !== v.date), v]);
@@ -74,6 +94,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => applyTheme(storedTheme()));
   const [confirmationEmailSent, setConfirmationEmailSent] = useState<boolean | null>(null);
   const loadedFor = useRef<string | null>(null);
+  const [fx, setFx] = useState<FxInfo>(initialFx);
+  const [spot, setSpot] = useState<SpotPrices | null>(readCachedSpot);
+  const [marketVersion, setMarketVersion] = useState(0);
+
+  const refreshMarket = useCallback(async (force = true) => {
+    const [f, sp] = await Promise.all([
+      force || !fxIsFresh(initialFx()) ? loadLiveFx() : Promise.resolve(null),
+      force || !spotIsFresh(readCachedSpot()) ? loadSpot() : Promise.resolve(null),
+    ]);
+    if (f) setFx(f);
+    if (sp) setSpot(sp);
+    if (f || sp) setMarketVersion((v) => v + 1);
+  }, []);
+
+  // Live exchange rates and metal prices on load (cached ones are already applied).
+  useEffect(() => {
+    refreshMarket(false);
+  }, [refreshMarket]);
 
   // Theme, number format and hidden balances follow settings everywhere.
   useEffect(() => {
@@ -91,7 +129,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (async () => {
       const u = await auth.currentUser();
       if (u) {
-        setPortfolio(await storage.loadPortfolio(u.id));
+        setPortfolio(clean(await storage.loadPortfolio(u.id)));
         const st = await storage.loadSettings(u.id);
         setSettings(st);
         setRange(st.defaultRange);
@@ -111,8 +149,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (user && loadedFor.current === user.id) storage.saveSettings(user.id, settings);
   }, [settings, user]);
 
+  // Precious metals with a weight are valued from the live spot price: today's value is
+  // (re)written whenever the price or rates move, which builds a daily history over time.
+  useEffect(() => {
+    if (!spot) return;
+    const today = todayISO();
+    const updates = new Map<string, { value: number; priced: Holding['priced'] }>();
+    for (const h of portfolio.holdings) {
+      if (h.type !== 'gold' || h.source !== 'priced') continue;
+      const q = goldQuote(h, spot);
+      if (!q) continue;
+      const cur = h.valuations.find((v) => v.date === today);
+      if (!cur || Math.abs(cur.value - q.value) >= 0.01) updates.set(h.id, { value: q.value, priced: { source: q.source, url: q.url, asOf: q.asOf } });
+    }
+    if (!updates.size) return;
+    setPortfolio((p) => ({
+      ...p,
+      holdings: p.holdings.map((h) => {
+        const u = updates.get(h.id);
+        return u ? { ...h, priced: u.priced, valuations: upsert(h.valuations, { date: today, value: u.value }) } : h;
+      }),
+    }));
+  }, [spot, fx, portfolio.holdings]);
+
   const signIn = useCallback(async (u: UserProfile, isNew = false) => {
-    const p = await storage.loadPortfolio(u.id);
+    const p = clean(await storage.loadPortfolio(u.id));
     // A new account starts with whatever theme was picked on the sign-in pages.
     const st = isNew ? { ...DEFAULT_SETTINGS, theme: storedTheme() } : await storage.loadSettings(u.id);
     loadedFor.current = u.id;
@@ -179,6 +240,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           2,
         ),
       confirmationEmailSent,
+      fx,
+      spot,
+      marketVersion,
+      refreshMarket: () => refreshMarket(true),
       addHolding: (h) => {
         const full: Holding = { ...h, id: uid(), createdAt: new Date().toISOString(), valuations: sortValuations(h.valuations) };
         mutate((hs) => [...hs, full]);
@@ -214,7 +279,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       loadSample: () => mutate((hs) => [...hs, ...samplePortfolio()]),
       clearAll: () => mutate(() => []),
     }),
-    [ready, user, portfolio, range, settings, theme, confirmationEmailSent, signIn, signOutLocal, mutate, mapHolding],
+    [ready, user, portfolio, range, settings, theme, confirmationEmailSent, signIn, signOutLocal, mutate, mapHolding, fx, spot, marketVersion, refreshMarket],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

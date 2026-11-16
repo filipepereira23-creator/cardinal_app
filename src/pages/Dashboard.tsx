@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CATEGORIES, CATEGORY_COLORS } from '../data/categories';
-import { buildSeries, categoryChange, categoryValue, holdingChange, holdingValue, holdingValueOn, rangeStart, totalChange, totalValue } from '../domain/calc';
-import { convert } from '../config/currencies';
-import { RANGES } from '../domain/dates';
+import { buildSeries, categoryChange, categoryValue, daysBetween, grossAssets, holdingChange, holdingValue, holdingValueOn, lastUpdated, rangeStart, rawValueOn, totalChange, totalValue } from '../domain/calc';
+import { convert, formatMoney } from '../config/currencies';
+import { RANGES, todayISO } from '../domain/dates';
+import { STALE_AFTER_DAYS, pricingMode } from '../valuation/valuers';
 import type { CategoryId, Holding } from '../domain/types';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
@@ -20,12 +21,16 @@ import { typeById, typesFor } from '../data/holdingTypes';
 import type { Provider, ProviderKind } from '../data/providers';
 
 export function Dashboard({ tab }: { tab: CategoryId }) {
-  const { holdings, currency, range, user, loadSample } = useStore();
+  const { holdings, currency, range, user, loadSample, marketVersion } = useStore();
   const [moved, setMoved] = useState(false);
   const start = rangeStart(range, holdings);
   const total = totalValue(holdings, currency);
+  const gross = grossAssets(holdings, currency);
+  const debts = categoryValue(holdings, 'debts', currency);
+  const hasDebts = holdings.some((h) => h.category === 'debts');
   const ch = totalChange(holdings, currency, start);
-  const series = useMemo(() => buildSeries(start, { total: (d) => totalValue(holdings, currency, d) }), [holdings, currency, start]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const series = useMemo(() => buildSeries(start, { total: (d) => totalValue(holdings, currency, d) }), [holdings, currency, start, marketVersion]);
   const rangeDesc = RANGES.find((r) => r.id === range)!.desc;
   const rangeLabel = RANGES.find((r) => r.id === range)!.label;
   const empty = holdings.length === 0;
@@ -41,6 +46,12 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
               <div className="hero-change">
                 <ChangePill change={ch} ccy={currency} onClick={() => setMoved(true)} />
                 <span className="muted small">{rangeDesc}</span>
+              </div>
+            )}
+            {hasDebts && (
+              <div className="hero-split small">
+                <span>Assets <b>{formatMoney(gross, currency, { decimals: false })}</b></span>
+                <span>Debts <b className="neg">{formatMoney(debts, currency, { decimals: false })}</b></span>
               </div>
             )}
           </div>
@@ -64,14 +75,15 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
         {CATEGORIES.map((c) => {
           const v = categoryValue(holdings, c.id, currency);
           const cc = categoryChange(holdings, c.id, currency, start);
-          const share = total > 0 ? (v / total) * 100 : 0;
+          // Share of gross assets, so the tiles still add up to 100% when debts are present.
+          const share = gross > 0 ? (Math.abs(v) / gross) * 100 : 0;
           return (
             <a key={c.id} href={`#/dashboard/${c.id}`} className={`cat-tab ${tab === c.id ? 'on' : ''}`} aria-current={tab === c.id}>
               <span className="cat-tab-label"><i style={{ background: CATEGORY_COLORS[c.id] }} />{c.label}</span>
               <Money value={v} ccy={currency} decimals={false} className="cat-tab-value" />
               <span className="cat-tab-foot">
                 {holdings.some((h) => h.category === c.id) ? <ChangePill change={cc} ccy={currency} showAbs={false} size="sm" /> : <span className="muted small">Add</span>}
-                {share > 0 && <span className="muted small">{share.toFixed(0)}%</span>}
+                {share > 0 && <span className="muted small" title={c.id === 'debts' ? 'Debts as a share of your assets' : 'Share of your assets'}>{share.toFixed(0)}%</span>}
               </span>
             </a>
           );
@@ -86,7 +98,7 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
 }
 
 function CategoryPanel({ category }: { category: CategoryId }) {
-  const { holdings, currency, range } = useStore();
+  const { holdings, currency, range, marketVersion } = useStore();
   const [view, setView] = useState<'overview' | 'connect'>('overview');
   const [adding, setAdding] = useState<{ providerId?: string } | null>(null);
   const [connecting, setConnecting] = useState<Provider | null>(null);
@@ -97,7 +109,8 @@ function CategoryPanel({ category }: { category: CategoryId }) {
   const total = categoryValue(holdings, category, currency);
   const ch = categoryChange(holdings, category, currency, start);
   const kinds = useMemo(() => [...new Set(typesFor(category).flatMap((t) => t.providerKinds))] as ProviderKind[], [category]);
-  const canConnect = kinds.length > 0;
+  // Debts and assets are entered by hand; the lender list is only used to label a debt.
+  const canConnect = kinds.length > 0 && category !== 'debts';
   const rangeLabel = RANGES.find((r) => r.id === range)!.label;
   const addedName = holdings.find((h) => h.id === justAdded)?.name;
   useEffect(() => {
@@ -115,12 +128,13 @@ function CategoryPanel({ category }: { category: CategoryId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items.map((h) => h.id + h.name).join(), currency],
   );
+  const debtSummary = category === 'debts' && items.length > 0 ? summariseDebts(items, currency) : null;
   const series = useMemo(() => {
     const fns: Record<string, (d: string) => number> = { total: (d) => categoryValue(holdings, category, currency, d) };
     for (const h of sorted.slice(0, 9)) fns[h.id] = (d) => convert(holdingValueOn(h, d), h.currency, currency);
     return buildSeries(start, fns);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holdings, currency, start, category]);
+  }, [holdings, currency, start, category, marketVersion]);
 
   return (
     <section className="card panel">
@@ -129,7 +143,20 @@ function CategoryPanel({ category }: { category: CategoryId }) {
           <div className="eyebrow">{cat.label}</div>
           <div className="panel-figure"><Money value={total} ccy={currency} /></div>
           {items.length > 0 && <ChangePill change={ch} ccy={currency} />}
-          {items.length > 0 && <GrowthStats change={ch} periodLabel={rangeLabel} />}
+          {items.length > 0 && category !== 'debts' && <GrowthStats change={ch} periodLabel={rangeLabel} />}
+          {debtSummary && (
+            <div className="growth">
+              <div className="growth-item">
+                <span className="growth-label">Monthly payments</span>
+                <span className="growth-val">{debtSummary.monthly > 0 ? formatMoney(debtSummary.monthly, currency, { decimals: false }) : '—'}</span>
+              </div>
+              <div className="growth-item">
+                <span className="growth-label">Average rate</span>
+                <span className="growth-val">{debtSummary.avgRate !== null ? `${debtSummary.avgRate.toFixed(2)}%` : '—'}</span>
+                <span className="growth-hint">Weighted by balance</span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="panel-actions">
           {canConnect && (
@@ -179,7 +206,7 @@ function CategoryPanel({ category }: { category: CategoryId }) {
                 <span className="add-circle sm"><Icon name="plus" size={18} /></span>
                 <span className="row-main">
                   <span className="row-title">Add another {cat.singular}</span>
-                  <span className="row-sub">{canConnect ? 'Type in a balance, or pick a provider under Connect' : 'Type in what it’s worth today'}</span>
+                  <span className="row-sub">{category === 'debts' ? 'Mortgage, loan, car finance, card…' : canConnect ? 'Type in a balance, or pick a provider under Connect' : 'Type in what it’s worth today'}</span>
                 </span>
               </button>
             </li>
@@ -201,6 +228,22 @@ function CategoryPanel({ category }: { category: CategoryId }) {
   );
 }
 
+/** Total monthly payments and balance-weighted average interest rate, in the display currency. */
+function summariseDebts(items: Holding[], ccy: Parameters<typeof convert>[2]) {
+  let monthly = 0;
+  let weighted = 0;
+  let weight = 0;
+  for (const h of items) {
+    const bal = convert(rawValueOn(h, todayISO()), h.currency, ccy);
+    if (h.debt?.monthlyPayment) monthly += convert(h.debt.monthlyPayment, h.currency, ccy);
+    if (h.debt?.interestRate !== undefined && bal > 0) {
+      weighted += h.debt.interestRate * bal;
+      weight += bal;
+    }
+  }
+  return { monthly, avgRate: weight > 0 ? weighted / weight : null };
+}
+
 function connectTitle(category: CategoryId) {
   return category === 'cash' ? 'Select a bank' : category === 'crypto' ? 'Select an exchange or wallet' : 'Select a provider';
 }
@@ -211,7 +254,17 @@ function HoldingRow({ h, start }: { h: Holding; start: string }) {
   const t = typeById(h.type);
   const v = holdingValue(h, currency);
   const c = holdingChange(h, currency, start);
-  const sub = [t?.label, p?.name, h.positions.length ? `${h.positions.length} holdings` : null, h.currency !== currency ? h.currency : null].filter(Boolean).join(' · ');
+  const updated = lastUpdated(h);
+  const stale = h.category === 'assets' && h.source === 'manual' && pricingMode(h.type) !== 'live' && !!updated && daysBetween(updated, todayISO()) > STALE_AFTER_DAYS;
+  const sub = [
+    t?.label,
+    p?.name,
+    h.positions.length ? `${h.positions.length} holdings` : null,
+    h.debt?.interestRate !== undefined ? `${h.debt.interestRate}%` : null,
+    h.source === 'priced' ? 'Live price' : null,
+    h.currency !== currency ? h.currency : null,
+    stale ? 'Worth an update' : null,
+  ].filter(Boolean).join(' · ');
   return (
     <li>
       <button className="row" onClick={() => go(`holding/${h.id}`)}>

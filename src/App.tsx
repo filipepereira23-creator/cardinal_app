@@ -12,7 +12,7 @@ import { Footer } from './components/Footer';
 import { Bird } from './components/Logo';
 import type { CategoryId } from './domain/types';
 
-const CATS: CategoryId[] = ['cash', 'investment', 'crypto', 'assets'];
+const CATS: CategoryId[] = ['cash', 'investment', 'crypto', 'assets', 'debts'];
 
 export default function App() {
   const { ready, user, confirmationEmailSent } = useStore();

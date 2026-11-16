@@ -1,10 +1,15 @@
 import type { CategoryId } from '../domain/types';
 import type { ProviderKind } from './providers';
+import { METALS, PURITIES, WEIGHT_UNITS } from '../valuation/metals';
 
 export interface FieldDef {
   key: string;
   label: string;
   placeholder?: string;
+  /** A fixed list of choices (rendered as a select). Keeps the value structured. */
+  options?: { value: string; label: string }[];
+  /** Numeric input. */
+  numeric?: boolean;
 }
 
 export interface HoldingType {
@@ -54,13 +59,27 @@ export const HOLDING_TYPES: HoldingType[] = [
   { id: 'boat', category: 'assets', label: 'Boat', providerKinds: [], allowsPositions: false, icon: 'boat',
     fields: [{ key: 'make', label: 'Make', placeholder: 'Riva' }, { key: 'model', label: 'Model', placeholder: 'Aquarama' }, { key: 'year', label: 'Year', placeholder: '1968' }] },
   { id: 'gold', category: 'assets', label: 'Gold & precious metals', providerKinds: [], allowsPositions: false, icon: 'gold',
-    fields: [{ key: 'metal', label: 'Metal', placeholder: 'Gold' }, { key: 'weight', label: 'Weight', placeholder: '100 g' }] },
+    fields: [
+      { key: 'metal', label: 'Metal', options: METALS.map((m) => ({ value: m.id, label: m.label })) },
+      { key: 'purity', label: 'Purity', options: PURITIES },
+      { key: 'weight', label: 'Weight', placeholder: '100', numeric: true },
+      { key: 'unit', label: 'Unit', options: WEIGHT_UNITS },
+    ] },
   { id: 'art', category: 'assets', label: 'Art & collectibles', providerKinds: [], allowsPositions: false, icon: 'art',
     fields: [{ key: 'artist', label: 'Artist / maker', placeholder: 'Optional' }, { key: 'year', label: 'Year', placeholder: 'Optional' }] },
   { id: 'jewellery', category: 'assets', label: 'Jewellery', providerKinds: [], allowsPositions: false, icon: 'gem',
     fields: [{ key: 'description', label: 'Description', placeholder: 'Optional' }] },
   { id: 'asset_other', category: 'assets', label: 'Something else', providerKinds: [], allowsPositions: false, icon: 'box',
     fields: [{ key: 'description', label: 'Description', placeholder: 'Optional' }] },
+
+  // Debts: entered by hand. Lender (optional) comes from the UK provider list.
+  { id: 'mortgage', category: 'debts', label: 'Mortgage', providerKinds: ['bank', 'lender'], allowsPositions: false, icon: 'house' },
+  { id: 'personal_loan', category: 'debts', label: 'Personal loan', providerKinds: ['bank', 'lender'], allowsPositions: false, icon: 'wallet' },
+  { id: 'car_finance', category: 'debts', label: 'Car finance', providerKinds: ['lender', 'bank'], allowsPositions: false, icon: 'car' },
+  { id: 'credit_card', category: 'debts', label: 'Credit card', providerKinds: ['lender', 'bank'], allowsPositions: false, icon: 'card' },
+  { id: 'student_loan', category: 'debts', label: 'Student loan', providerKinds: ['lender'], allowsPositions: false, icon: 'cap' },
+  { id: 'overdraft', category: 'debts', label: 'Overdraft', providerKinds: ['bank'], allowsPositions: false, icon: 'bank' },
+  { id: 'debt_other', category: 'debts', label: 'Other debt', providerKinds: ['lender', 'bank'], allowsPositions: false, icon: 'box' },
 ];
 
 export function typesFor(category: CategoryId): HoldingType[] {

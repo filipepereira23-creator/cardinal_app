@@ -5,6 +5,7 @@ export const CATEGORIES: { id: CategoryId; label: string; singular: string; blur
   { id: 'investment', label: 'Investment', singular: 'investment account', blurb: 'ISAs, investment accounts and pensions' },
   { id: 'crypto', label: 'Crypto', singular: 'crypto holding', blurb: 'Exchanges and wallets' },
   { id: 'assets', label: 'Assets', singular: 'asset', blurb: 'Watches, cars, property, gold and more' },
+  { id: 'debts', label: 'Debts', singular: 'debt', blurb: 'Mortgages, loans, car finance, credit cards and student loans' },
 ];
 
 export const CATEGORY_COLORS: Record<CategoryId, string> = {
@@ -12,4 +13,5 @@ export const CATEGORY_COLORS: Record<CategoryId, string> = {
   investment: '#8E0A12',
   crypto: '#F0807F',
   assets: '#4A4A4A',
+  debts: '#9A9AA0',
 };
