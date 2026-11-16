@@ -1,21 +1,21 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
-import { buildSeries, holdingChange, holdingValue, holdingValueOn, positionChange, positionValue, rangeStart, valueOn } from '../domain/calc';
-import { convert, formatMoney } from '../config/currencies';
+import { buildSeries, holdingChange, holdingValue, holdingValueOn, positionChange, positionValue, purchaseGain, rangeStart, valueOn } from '../domain/calc';
+import { convert, formatMoney, formatPct, type CurrencyCode } from '../config/currencies';
 import { formatDate, RANGES } from '../domain/dates';
 import { providerById } from '../data/providers';
 import { typeById } from '../data/holdingTypes';
 import { CATEGORIES } from '../data/categories';
 import { PLANNED_SOURCES } from '../valuation/valuers';
 import { AreaTrend } from '../components/Charts';
-import { ChangePill, Money } from '../components/Money';
+import { ChangePill, GrowthStats, Money } from '../components/Money';
 import { RangeTabs } from '../components/RangeTabs';
 import { ProviderMark } from '../components/ProviderMark';
 import { Icon } from '../components/Icon';
-import { AddPositionModal, UpdateValueModal, Field } from '../components/Forms';
+import { AddPositionModal, UpdateValueModal, Field, AcquisitionFields } from '../components/Forms';
 import { Modal } from '../components/Modal';
-import type { Position } from '../domain/types';
+import type { Holding, Position } from '../domain/types';
 
 export function HoldingDetail({ id }: { id: string }) {
   const { holdings, currency, range, addValuation, deleteValuation, deleteHolding, updateHolding, deletePosition } = useStore();
@@ -45,6 +45,7 @@ export function HoldingDetail({ id }: { id: string }) {
   const ch = holdingChange(h, currency, start);
   const native = holdingValueOn(h, '9999-12-31');
   const desc = RANGES.find((r) => r.id === range)!.desc;
+  const rangeLabel = RANGES.find((r) => r.id === range)!.label;
   const positions = [...h.positions].sort((a, b) => valueOn(b.valuations, '9999') - valueOn(a.valuations, '9999'));
   const detailEntries = Object.entries(h.details ?? {}).filter(([, val]) => val);
   const history = [...h.valuations].reverse();
@@ -74,6 +75,8 @@ export function HoldingDetail({ id }: { id: string }) {
           <RangeTabs />
         </div>
         <AreaTrend series={series} ccy={currency} height={200} />
+        <GrowthStats change={ch} periodLabel={rangeLabel} />
+        {h.category === 'assets' && <PurchaseInfo h={h} ccy={currency} onEdit={() => setEditing(true)} />}
         <div className="detail-actions">
           {!h.positions.length && (
             <button className="btn btn-primary" onClick={() => setUpdating({})}>Update value</button>
@@ -169,8 +172,10 @@ export function HoldingDetail({ id }: { id: string }) {
           name={h.name}
           details={h.details ?? {}}
           fields={t?.fields ?? []}
+          acquisition={h.category === 'assets' ? h.acquisition ?? {} : undefined}
+          currency={h.currency}
           onClose={() => setEditing(false)}
-          onSave={(name, details) => updateHolding(h.id, { name, details })}
+          onSave={(name, details, acquisition) => updateHolding(h.id, { name, details, ...(acquisition !== undefined ? { acquisition } : {}) })}
         />
       )}
     </div>
@@ -198,18 +203,69 @@ function History({ items, currency, onDelete }: { items: { date: string; value: 
   );
 }
 
-function EditModal({ name, details, fields, onSave, onClose }: { name: string; details: Record<string, string>; fields: { key: string; label: string; placeholder?: string }[]; onSave: (n: string, d: Record<string, string>) => void; onClose: () => void }) {
+/** "Since purchase" line for assets. Only shows a gain when a meaningful purchase price exists. */
+function PurchaseInfo({ h, ccy, onEdit }: { h: Holding; ccy: CurrencyCode; onEdit: () => void }) {
+  const a = h.acquisition;
+  const g = purchaseGain(h, ccy);
+  const when = a?.date ? formatDate(a.date, 'long') : null;
+  let body;
+  if (g) {
+    body = (
+      <>
+        <span>Since purchase{when ? ` (${when})` : ''}: </span>
+        <b className={g.abs >= 0 ? 'pos' : 'neg'}>{formatMoney(g.abs, ccy, { sign: true, decimals: false })}{g.pct !== null ? ` · ${formatPct(g.pct)}` : ''}</b>
+        {g.annualised !== null && <span className="muted"> · {formatPct(g.annualised)} a year</span>}
+        <span className="muted"> · paid {formatMoney(convert(a!.price!, h.currency, ccy), ccy, { decimals: false })}</span>
+      </>
+    );
+  } else if (a?.gift) {
+    body = <span>Gift or inheritance{when ? `, received ${when}` : ''}. No gain since purchase is shown.</span>;
+  } else if (a?.price !== undefined) {
+    body = <span>Paid {formatMoney(convert(a.price, h.currency, ccy), ccy)}. Too small to compare against, so no gain since purchase is shown.</span>;
+  } else {
+    body = <span className="muted">No purchase price added. That's fine: it's optional.</span>;
+  }
+  return (
+    <div className="purchase-info">
+      <div>{body}</div>
+      <button className="link-btn" onClick={onEdit}>{a ? 'Edit' : 'Add what you paid'}</button>
+    </div>
+  );
+}
+
+type Acq = NonNullable<Holding['acquisition']>;
+
+function EditModal({ name, details, fields, acquisition, currency, onSave, onClose }: { name: string; details: Record<string, string>; fields: { key: string; label: string; placeholder?: string }[]; acquisition?: Acq; currency: CurrencyCode; onSave: (n: string, d: Record<string, string>, a?: Acq) => void; onClose: () => void }) {
   const [n, setN] = useState(name);
   const [d, setD] = useState(details);
+  const [price, setPrice] = useState(acquisition?.price !== undefined ? String(acquisition.price) : '');
+  const [date, setDate] = useState(acquisition?.date ?? '');
+  const [gift, setGift] = useState(!!acquisition?.gift);
+  const [err, setErr] = useState('');
   return (
     <Modal title="Edit" onClose={onClose}>
-      <form className="form" onSubmit={(e) => { e.preventDefault(); onSave(n.trim() || name, d); onClose(); }}>
+      <form
+        className="form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          let acq: Acq | undefined;
+          if (acquisition) {
+            const p = price.trim() ? Number(price.replace(/[^0-9.\-]/g, '')) : undefined;
+            if (p !== undefined && (Number.isNaN(p) || p < 0)) return setErr('Purchase price should be a number, or leave it blank.');
+            acq = { price: gift ? undefined : p, date: date || undefined, gift: gift || undefined };
+          }
+          onSave(n.trim() || name, d, acq);
+          onClose();
+        }}
+      >
         <Field label="Name"><input className="input" value={n} onChange={(e) => setN(e.target.value)} autoFocus /></Field>
         {fields.map((f) => (
           <Field key={f.key} label={f.label}>
             <input className="input" placeholder={f.placeholder} value={d[f.key] ?? ''} onChange={(e) => setD({ ...d, [f.key]: e.target.value })} />
           </Field>
         ))}
+        {acquisition && <AcquisitionFields currency={currency} price={price} setPrice={setPrice} date={date} setDate={setDate} gift={gift} setGift={setGift} />}
+        {err && <p className="error">{err}</p>}
         <div className="form-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary">Save</button>

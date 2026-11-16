@@ -47,6 +47,11 @@ export interface Holding {
   /** Free-form details, e.g. { brand: 'Rolex', model: 'Submariner', year: '2019' }. */
   details?: Record<string, string>;
   notes?: string;
+  /**
+   * What was paid for an asset, if anything. Optional: cars and watches are often gifts.
+   * Gains since purchase are only shown when `price` is meaningful (see calc.purchaseGain).
+   */
+  acquisition?: { price?: number; date?: string; gift?: boolean };
   createdAt: string;
 }
 
@@ -57,6 +62,27 @@ export interface UserProfile {
   email: string;
   createdAt: string;
 }
+
+export type Theme = 'light' | 'dark' | 'system';
+
+/** Per-user preferences from the Settings page. */
+export interface Settings {
+  theme: Theme;
+  numberFormat: 'en-GB' | 'de-DE' | 'fr-FR';
+  showDecimals: boolean;
+  hideBalances: boolean;
+  defaultRange: '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
+  notifications: { weeklySummary: boolean; bigMoves: boolean; updateReminders: boolean };
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  theme: 'system',
+  numberFormat: 'en-GB',
+  showDecimals: true,
+  hideBalances: false,
+  defaultRange: '1M',
+  notifications: { weeklySummary: false, bigMoves: false, updateReminders: false },
+};
 
 export interface Portfolio {
   holdings: Holding[];

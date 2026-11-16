@@ -31,6 +31,17 @@ const P: Record<string, string> = {
   down: 'M7 10l5 5 5-5',
   logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11',
   sparkle: 'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z',
+  gear: 'M12 15a3 3 0 100-6 3 3 0 000 6zm7.4-3a7.4 7.4 0 00-.1-1.2l2-1.6-2-3.4-2.4 1a7.5 7.5 0 00-2-1.2L14.5 3h-4l-.4 2.6a7.5 7.5 0 00-2 1.2l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 000 2.4l-2 1.6 2 3.4 2.4-1a7.5 7.5 0 002 1.2l.4 2.6h4l.4-2.6a7.5 7.5 0 002-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z',
+  arrow: 'M4 12h16m-6-6l6 6-6 6',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 017 0v3',
+  eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zm10 3a3 3 0 100-6 3 3 0 000 6z',
+  download: 'M12 4v11m-5-5l5 5 5-5M5 20h14',
+  mail: 'M3 6h18v12H3zm0 0l9 7 9-7',
+  bell: 'M6 16V11a6 6 0 0112 0v5l2 2H4l2-2zm4 4h4',
+  moon: 'M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z',
+  plusCircle: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 8v8M8 12h8',
+  minusCircle: 'M12 21a9 9 0 100-18 9 9 0 000 18zM8 12h8',
 };
 
 export function Icon({ name, size = 20, className = '' }: { name: string; size?: number; className?: string }) {

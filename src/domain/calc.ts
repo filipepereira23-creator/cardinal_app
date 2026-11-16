@@ -88,27 +88,70 @@ export interface Change {
   from: number;
   to: number;
   abs: number;
+  /** % change over the period, or null when the starting value is too small to compare against. */
   pct: number | null;
+  /** Days the period covers. */
+  days: number;
+  /** Compound annual growth rate (%), or null when the period is too short or the base isn't meaningful. */
+  annualised: number | null;
 }
 
-export function change(from: number, to: number): Change {
-  return { from, to, abs: to - from, pct: from !== 0 ? ((to - from) / Math.abs(from)) * 100 : null };
+/** Shortest period we annualise. A 1-day or 1-week move compounded to a year is noise. */
+export const MIN_ANNUALISE_DAYS = 30;
+
+/**
+ * A starting value is "meaningful" if it isn't ~zero and the move isn't more than 50x it.
+ * This stops a £1 gifted car or a newly opened £0 account showing "+4,999,900%".
+ */
+export function meaningfulBase(from: number, to: number): boolean {
+  return Math.abs(from) >= 1 && Math.abs(from) * 50 >= Math.abs(to);
 }
+
+export function annualise(from: number, to: number, days: number): number | null {
+  if (days < MIN_ANNUALISE_DAYS || from <= 0 || to < 0 || !meaningfulBase(from, to)) return null;
+  const r = (Math.pow(to / from, 365 / days) - 1) * 100;
+  return Number.isFinite(r) ? r : null;
+}
+
+export function change(from: number, to: number, days = 0): Change {
+  const pct = meaningfulBase(from, to) ? ((to - from) / Math.abs(from)) * 100 : null;
+  return { from, to, abs: to - from, pct, days, annualised: annualise(from, to, days) };
+}
+
+export function daysBetween(a: string, b: string): number {
+  return Math.round((parseISO(b).getTime() - parseISO(a).getTime()) / DAY);
+}
+
+const periodDays = (start: string) => daysBetween(start, todayISO());
 
 export function holdingChange(h: Holding, ccy: CurrencyCode, start: string): Change {
-  return change(holdingValue(h, ccy, start), holdingValue(h, ccy));
+  return change(holdingValue(h, ccy, start), holdingValue(h, ccy), periodDays(start));
 }
 
 export function positionChange(p: Position, h: Holding, ccy: CurrencyCode, start: string): Change {
-  return change(positionValue(p, h, ccy, start), positionValue(p, h, ccy));
+  return change(positionValue(p, h, ccy, start), positionValue(p, h, ccy), periodDays(start));
 }
 
 export function categoryChange(holdings: Holding[], cat: CategoryId, ccy: CurrencyCode, start: string): Change {
-  return change(categoryValue(holdings, cat, ccy, start), categoryValue(holdings, cat, ccy));
+  return change(categoryValue(holdings, cat, ccy, start), categoryValue(holdings, cat, ccy), periodDays(start));
 }
 
 export function totalChange(holdings: Holding[], ccy: CurrencyCode, start: string): Change {
-  return change(totalValue(holdings, ccy, start), totalValue(holdings, ccy));
+  return change(totalValue(holdings, ccy, start), totalValue(holdings, ccy), periodDays(start));
+}
+
+/**
+ * Gain since purchase for an asset, in the display currency.
+ * Returns null when there is no purchase price, it was a gift, or the price is
+ * too small to be meaningful (e.g. £0 or £1 for a gifted car).
+ */
+export function purchaseGain(h: Holding, ccy: CurrencyCode): Change | null {
+  const a = h.acquisition;
+  if (!a || a.gift || a.price === undefined) return null;
+  const now = holdingValueOn(h, todayISO());
+  if (!meaningfulBase(a.price, now) || a.price < 100) return null;
+  const days = a.date ? daysBetween(a.date, todayISO()) : 0;
+  return change(convert(a.price, h.currency, ccy), convert(now, h.currency, ccy), days);
 }
 
 /** The individual things (accounts without positions, and positions) that moved most. */

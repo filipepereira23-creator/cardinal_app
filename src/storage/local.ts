@@ -1,9 +1,10 @@
 import type { AuthAdapter, StorageAdapter } from './adapter';
-import type { Portfolio, UserProfile } from '../domain/types';
+import { DEFAULT_SETTINGS, type Portfolio, type Settings, type UserProfile } from '../domain/types';
 
 const USERS_KEY = 'cardinal.users.v1';
 const SESSION_KEY = 'cardinal.session.v1';
 const portfolioKey = (id: string) => `cardinal.portfolio.v1.${id}`;
+const settingsKey = (id: string) => `cardinal.settings.v1.${id}`;
 
 interface StoredUser extends UserProfile {
   salt: string;
@@ -81,6 +82,26 @@ export class LocalAuth implements AuthAdapter {
     const user = id ? readUsers().find((u) => u.id === id) : undefined;
     return user ? strip(user) : null;
   }
+
+  async updateProfile(userId: string, patch: { firstName?: string; lastName?: string; email?: string }) {
+    const users = readUsers();
+    const user = users.find((u) => u.id === userId);
+    if (!user) throw new Error('Account not found.');
+    const email = patch.email?.trim().toLowerCase();
+    if (email && email !== user.email && users.some((u) => u.email === email)) throw new Error('Another account already uses this email.');
+    if (patch.firstName !== undefined) user.firstName = patch.firstName.trim();
+    if (patch.lastName !== undefined) user.lastName = patch.lastName.trim();
+    if (email) user.email = email;
+    writeUsers(users);
+    return strip(user);
+  }
+
+  async deleteAccount(userId: string) {
+    writeUsers(readUsers().filter((u) => u.id !== userId));
+    localStorage.removeItem(portfolioKey(userId));
+    localStorage.removeItem(settingsKey(userId));
+    localStorage.removeItem(SESSION_KEY);
+  }
 }
 
 export class LocalStorageAdapter implements StorageAdapter {
@@ -95,5 +116,24 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
   async savePortfolio(userId: string, portfolio: Portfolio) {
     localStorage.setItem(portfolioKey(userId), JSON.stringify(portfolio));
+  }
+  async loadSettings(userId: string): Promise<Settings> {
+    try {
+      const raw = localStorage.getItem(settingsKey(userId));
+      if (raw) {
+        const s = JSON.parse(raw);
+        return { ...DEFAULT_SETTINGS, ...s, notifications: { ...DEFAULT_SETTINGS.notifications, ...s.notifications } };
+      }
+    } catch {
+      /* fall through */
+    }
+    return DEFAULT_SETTINGS;
+  }
+  async saveSettings(userId: string, settings: Settings) {
+    localStorage.setItem(settingsKey(userId), JSON.stringify(settings));
+  }
+  async deleteAll(userId: string) {
+    localStorage.removeItem(portfolioKey(userId));
+    localStorage.removeItem(settingsKey(userId));
   }
 }

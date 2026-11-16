@@ -1,11 +1,31 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { CurrencyCode } from '../config/currencies';
-import type { Holding, Portfolio, Position, UserProfile, Valuation } from '../domain/types';
+import { setMoneyPrefs, type CurrencyCode } from '../config/currencies';
+import { DEFAULT_SETTINGS, type Holding, type Portfolio, type Position, type Settings, type UserProfile, type Valuation } from '../domain/types';
 import type { RangeId } from '../domain/dates';
 import { sortValuations } from '../domain/calc';
 import { auth, storage } from '../storage';
 import { uid } from '../storage/local';
 import { samplePortfolio } from '../data/sample';
+import { email } from '../integrations/email';
+
+const THEME_KEY = 'cardinal.theme.v1';
+
+function systemDark(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+}
+
+/** Applies the theme to <html data-theme> so CSS variables switch, and remembers it for the sign-in pages. */
+function applyTheme(theme: Settings['theme']): 'light' | 'dark' {
+  const resolved = theme === 'system' ? (systemDark() ? 'dark' : 'light') : theme;
+  document.documentElement.dataset.theme = resolved;
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', resolved === 'dark' ? '#0f0f11' : '#ffffff');
+  return resolved;
+}
+
+function storedTheme(): Settings['theme'] {
+  const t = localStorage.getItem(THEME_KEY);
+  return t === 'light' || t === 'dark' || t === 'system' ? t : 'system';
+}
 
 interface Store {
   ready: boolean;
@@ -28,6 +48,15 @@ interface Store {
   deletePosition(holdingId: string, positionId: string): void;
   loadSample(): void;
   clearAll(): void;
+  settings: Settings;
+  /** The theme actually showing, after resolving 'system'. */
+  theme: 'light' | 'dark';
+  updateSettings(patch: Partial<Settings>): void;
+  updateProfile(patch: { firstName?: string; lastName?: string; email?: string }): Promise<void>;
+  deleteAccount(): Promise<void>;
+  exportData(): string;
+  /** Whether a confirmation email actually went out for the account just created (false until a backend exists). */
+  confirmationEmailSent: boolean | null;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -41,13 +70,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio>({ holdings: [], displayCurrency: 'GBP' });
   const [range, setRange] = useState<RangeId>('1M');
+  const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS, theme: storedTheme() });
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => applyTheme(storedTheme()));
+  const [confirmationEmailSent, setConfirmationEmailSent] = useState<boolean | null>(null);
   const loadedFor = useRef<string | null>(null);
+
+  // Theme, number format and hidden balances follow settings everywhere.
+  useEffect(() => {
+    setMoneyPrefs({ locale: settings.numberFormat, hide: settings.hideBalances, decimals: settings.showDecimals });
+    setTheme(applyTheme(settings.theme));
+    localStorage.setItem(THEME_KEY, settings.theme);
+    if (settings.theme !== 'system') return;
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const on = () => setTheme(applyTheme('system'));
+    mq?.addEventListener?.('change', on);
+    return () => mq?.removeEventListener?.('change', on);
+  }, [settings]);
 
   useEffect(() => {
     (async () => {
       const u = await auth.currentUser();
       if (u) {
         setPortfolio(await storage.loadPortfolio(u.id));
+        const st = await storage.loadSettings(u.id);
+        setSettings(st);
+        setRange(st.defaultRange);
         loadedFor.current = u.id;
       }
       setUser(u);
@@ -60,11 +107,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (user && loadedFor.current === user.id) storage.savePortfolio(user.id, portfolio);
   }, [portfolio, user]);
 
-  const signIn = useCallback(async (u: UserProfile) => {
+  useEffect(() => {
+    if (user && loadedFor.current === user.id) storage.saveSettings(user.id, settings);
+  }, [settings, user]);
+
+  const signIn = useCallback(async (u: UserProfile, isNew = false) => {
     const p = await storage.loadPortfolio(u.id);
+    // A new account starts with whatever theme was picked on the sign-in pages.
+    const st = isNew ? { ...DEFAULT_SETTINGS, theme: storedTheme() } : await storage.loadSettings(u.id);
     loadedFor.current = u.id;
     setPortfolio(p);
+    setSettings(st);
+    setRange(st.defaultRange);
     setUser(u);
+  }, []);
+
+  const signOutLocal = useCallback(() => {
+    loadedFor.current = null;
+    setUser(null);
+    setPortfolio({ holdings: [], displayCurrency: 'GBP' });
+    setSettings((s) => ({ ...DEFAULT_SETTINGS, theme: s.theme }));
+    setConfirmationEmailSent(null);
   }, []);
 
   const mutate = useCallback((fn: (h: Holding[]) => Holding[]) => setPortfolio((p) => ({ ...p, holdings: fn(p.holdings) })), []);
@@ -82,14 +145,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       range,
       setRange,
       setCurrency: (c) => setPortfolio((p) => ({ ...p, displayCurrency: c })),
-      register: async (i) => signIn(await auth.register(i)),
-      login: async (e, pw) => signIn(await auth.login(e, pw)),
+      register: async (i) => {
+        const u = await auth.register(i);
+        const res = await email.sendAccountConfirmation(u).catch(() => ({ sent: false }));
+        setConfirmationEmailSent(res.sent);
+        await signIn(u, true);
+      },
+      login: async (e, pw) => {
+        setConfirmationEmailSent(null);
+        await signIn(await auth.login(e, pw));
+      },
       logout: async () => {
         await auth.logout();
-        loadedFor.current = null;
-        setUser(null);
-        setPortfolio({ holdings: [], displayCurrency: 'GBP' });
+        signOutLocal();
       },
+      settings,
+      theme,
+      updateSettings: (patch) => setSettings((s) => ({ ...s, ...patch })),
+      updateProfile: async (patch) => {
+        if (!user) return;
+        setUser(await auth.updateProfile(user.id, patch));
+      },
+      deleteAccount: async () => {
+        if (!user) return;
+        await storage.deleteAll(user.id);
+        await auth.deleteAccount(user.id);
+        signOutLocal();
+      },
+      exportData: () =>
+        JSON.stringify(
+          { app: 'Cardinal', version: 1, exportedAt: new Date().toISOString(), profile: user, settings, portfolio },
+          null,
+          2,
+        ),
+      confirmationEmailSent,
       addHolding: (h) => {
         const full: Holding = { ...h, id: uid(), createdAt: new Date().toISOString(), valuations: sortValuations(h.valuations) };
         mutate((hs) => [...hs, full]);
@@ -125,7 +214,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       loadSample: () => mutate((hs) => [...hs, ...samplePortfolio()]),
       clearAll: () => mutate(() => []),
     }),
-    [ready, user, portfolio, range, signIn, mutate, mapHolding],
+    [ready, user, portfolio, range, settings, theme, confirmationEmailSent, signIn, signOutLocal, mutate, mapHolding],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

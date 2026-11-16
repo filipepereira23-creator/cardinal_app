@@ -1,21 +1,19 @@
 import { useMemo, useState } from 'react';
-import { KIND_LABELS, providersFor, type ProviderKind } from '../data/providers';
+import { KIND_LABELS, providersFor, searchProviders, type Provider, type ProviderKind } from '../data/providers';
 import { ProviderMark } from './ProviderMark';
 import { Icon } from './Icon';
 
-/** "Link your account" grid. Every provider is marked coming soon in v1. */
-export function ProviderGrid({ kinds, onPick, onManual, title }: { kinds: ProviderKind[]; onPick: (id: string) => void; onManual: () => void; title: string }) {
+/** Searchable provider list in the style of a bank's "Select a bank" screen: logo, name, arrow. */
+export function ProviderList({ kinds, onPick, onManual, compact = false }: { kinds: ProviderKind[]; onPick: (p: Provider) => void; onManual: () => void; compact?: boolean }) {
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<ProviderKind | 'all'>('all');
   const all = useMemo(() => providersFor(kind === 'all' ? kinds : [kind]), [kinds, kind]);
-  const list = all.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
+  const list = searchProviders(all, q);
   return (
-    <div className="provider-grid-wrap">
-      <h3 className="center">{title}</h3>
-      <p className="muted center small">Read-only and secure. Cardinal will never move your money. Live connections are coming soon, so add balances manually for now.</p>
+    <div className={`plist-wrap ${compact ? 'compact' : ''}`}>
       <div className="search-box">
         <Icon name="search" size={16} />
-        <input placeholder="Search providers" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input placeholder="Search providers" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search providers" />
       </div>
       {kinds.length > 1 && (
         <div className="chips chips-scroll">
@@ -25,20 +23,27 @@ export function ProviderGrid({ kinds, onPick, onManual, title }: { kinds: Provid
           ))}
         </div>
       )}
-      <div className="provider-grid">
+      <ul className="plist" aria-label="Providers">
         {list.map((p) => (
-          <button key={p.id} className="provider-tile" onClick={() => onPick(p.id)}>
-            <ProviderMark provider={p} size={44} />
-            <span className="provider-name">{p.name}</span>
-            <span className="soon">Coming soon</span>
-          </button>
+          <li key={p.id}>
+            <button className="plist-row" onClick={() => onPick(p)}>
+              <ProviderMark provider={p} size={44} />
+              <span className="plist-name">{p.name}</span>
+              <span className="soon">Coming soon</span>
+              <Icon name="arrow" size={20} className="plist-arrow" />
+            </button>
+          </li>
         ))}
-        <button className="provider-tile provider-add" onClick={onManual}>
-          <span className="add-circle"><Icon name="plus" size={22} /></span>
-          <span className="provider-name">Add manually</span>
-          <span className="soon soon-ok">Available now</span>
-        </button>
-      </div>
+        {!list.length && <li className="muted pad">No provider matches “{q}”. You can still add it manually.</li>}
+        <li>
+          <button className="plist-row plist-manual" onClick={onManual}>
+            <span className="add-circle"><Icon name="plus" size={20} /></span>
+            <span className="plist-name">Add manually<span className="muted small"> · type in a balance</span></span>
+            <span className="soon soon-ok">Available now</span>
+            <Icon name="arrow" size={20} className="plist-arrow" />
+          </button>
+        </li>
+      </ul>
       <p className="muted center small">{all.length} providers</p>
     </div>
   );

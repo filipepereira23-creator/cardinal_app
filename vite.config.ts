@@ -7,5 +7,12 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: './',
-  build: { outDir: 'docs', emptyOutDir: true },
+  build: {
+    outDir: 'docs',
+    emptyOutDir: true,
+    // Recharts is ~550 kB minified (~155 kB gzipped) on its own; that's expected.
+    chunkSizeWarningLimit: 650,
+    // Charts in their own file, so the browser caches them between releases.
+    rollupOptions: { output: { manualChunks: { charts: ['recharts'] } } },
+  },
 });

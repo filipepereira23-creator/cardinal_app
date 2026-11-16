@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Logo } from '../components/Logo';
+import { Logo, Bird } from '../components/Logo';
+import { Footer } from '../components/Footer';
 import { Field } from '../components/Forms';
 import { go } from '../state/router';
 import { useStore } from '../state/store';
@@ -11,7 +12,7 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
         <Logo size={30} />
       </header>
       <main className="auth-card">{children}</main>
-      <footer className="auth-foot">Your net worth, all in one place.</footer>
+      <Footer />
     </div>
   );
 }
@@ -19,7 +20,7 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
 export function Welcome() {
   return (
     <AuthFrame>
-      <img className="welcome-bird" src="./cardinal.png" alt="" />
+      <Bird className="welcome-bird" />
       <h1 className="welcome-title">Welcome to Cardinal.</h1>
       <p className="muted center">See everything you own in one number, and watch it move.</p>
       <div className="stack">
@@ -100,7 +101,7 @@ export function Register() {
           setBusy(true);
           try {
             await register(f);
-            go('dashboard');
+            go('confirmed');
           } catch (x: any) {
             setErr(x.message);
           } finally {

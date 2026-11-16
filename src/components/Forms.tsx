@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { CURRENCIES, type CurrencyCode } from '../config/currencies';
 import { typesFor, typeById } from '../data/holdingTypes';
-import { providersFor, providerById, type Provider } from '../data/providers';
+import { providersFor, providerById, searchProviders, type Provider } from '../data/providers';
 import type { CategoryId } from '../domain/types';
 import { CATEGORIES } from '../data/categories';
 import { todayISO } from '../domain/dates';
+import { meaningfulBase } from '../domain/calc';
 import { useStore } from '../state/store';
 import { PLANNED_SOURCES } from '../valuation/valuers';
 import { Modal } from './Modal';
@@ -25,12 +26,12 @@ function parseAmount(s: string): number {
   return Number(s.replace(/[^0-9.\-]/g, ''));
 }
 
-export function AmountInput({ value, onChange, currency, autoFocus }: { value: string; onChange: (s: string) => void; currency: CurrencyCode; autoFocus?: boolean }) {
+export function AmountInput({ value, onChange, currency, autoFocus, required = false, placeholder = '0.00' }: { value: string; onChange: (s: string) => void; currency: CurrencyCode; autoFocus?: boolean; required?: boolean; placeholder?: string }) {
   const sym = CURRENCIES.find((c) => c.code === currency)?.symbol;
   return (
     <div className="amount-input">
       <span>{sym}</span>
-      <input inputMode="decimal" placeholder="0.00" value={value} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} required />
+      <input inputMode="decimal" placeholder={placeholder} value={value} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} required={required} />
     </div>
   );
 }
@@ -39,7 +40,7 @@ function ProviderPicker({ providers, value, onChange }: { providers: Provider[];
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const sel = providerById(value);
-  const list = providers.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
+  const list = searchProviders(providers, q);
   return (
     <div className="provider-picker">
       <button type="button" className="input provider-picker-btn" onClick={() => setOpen((o) => !o)}>
@@ -92,6 +93,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
   const [details, setDetails] = useState<Record<string, string>>({});
   const [buyPrice, setBuyPrice] = useState('');
   const [buyDate, setBuyDate] = useState('');
+  const [gift, setGift] = useState(false);
   const [err, setErr] = useState('');
   const type = typeById(typeId)!;
   const providers = useMemo(() => providersFor(type.providerKinds), [type]);
@@ -112,8 +114,11 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
     const v = parseAmount(amount);
     if (!amount || Number.isNaN(v)) return setErr('Enter the current value.');
     const valuations = [{ date, value: v }];
-    const bp = parseAmount(buyPrice);
-    if (buyPrice && buyDate && !Number.isNaN(bp) && buyDate < date) valuations.unshift({ date: buyDate, value: bp });
+    const bp = buyPrice.trim() ? parseAmount(buyPrice) : undefined;
+    if (bp !== undefined && (Number.isNaN(bp) || bp < 0)) return setErr('Purchase price should be a number, or leave it blank.');
+    // Only draw history from the purchase price if it's a real price. A £0 or £1 gift would make the chart and % meaningless.
+    if (!gift && bp !== undefined && bp >= 100 && meaningfulBase(bp, v) && buyDate && buyDate < date) valuations.unshift({ date: buyDate, value: bp });
+    const acquisition = category === 'assets' && (gift || bp !== undefined || buyDate) ? { price: gift ? undefined : bp, date: buyDate || undefined, gift: gift || undefined } : undefined;
     const h = addHolding({
       category,
       type: typeId,
@@ -124,6 +129,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
       valuations,
       positions: [],
       details: type.fields ? details : undefined,
+      acquisition,
     });
     onAdded?.(h.id);
     onClose();
@@ -168,7 +174,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
         </Field>
         <div className="grid-2">
           <Field label={category === 'assets' ? 'Current value' : 'Current balance'}>
-            <AmountInput value={amount} onChange={setAmount} currency={ccy} />
+            <AmountInput value={amount} onChange={setAmount} currency={ccy} required />
           </Field>
           <Field label="Currency">
             <select className="input" value={ccy} onChange={(e) => setCcy(e.target.value as CurrencyCode)}>
@@ -182,17 +188,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
           <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
         </Field>
         {category === 'assets' && (
-          <details className="more">
-            <summary>Add what you paid (optional, draws its history)</summary>
-            <div className="grid-2">
-              <Field label="Purchase price">
-                <AmountInput value={buyPrice} onChange={setBuyPrice} currency={ccy} />
-              </Field>
-              <Field label="Purchase date">
-                <input className="input" type="date" value={buyDate} max={date} onChange={(e) => setBuyDate(e.target.value)} />
-              </Field>
-            </div>
-          </details>
+          <AcquisitionFields currency={ccy} price={buyPrice} setPrice={setBuyPrice} date={buyDate} setDate={setBuyDate} gift={gift} setGift={setGift} maxDate={date} />
         )}
         {PLANNED_SOURCES[typeId] && <p className="field-hint">Live pricing from {PLANNED_SOURCES[typeId]} is coming soon. Until then, type in today's value.</p>}
         {type.allowsPositions && <p className="field-hint">You can add the individual funds, shares or coins inside it once it's added.</p>}
@@ -203,6 +199,30 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
         </div>
       </form>
     </Modal>
+  );
+}
+
+/** Optional "what you paid" fields for assets. Nothing here is required: cars and watches are often gifts. */
+export function AcquisitionFields({ currency, price, setPrice, date, setDate, gift, setGift, maxDate }: { currency: CurrencyCode; price: string; setPrice: (s: string) => void; date: string; setDate: (s: string) => void; gift: boolean; setGift: (b: boolean) => void; maxDate?: string }) {
+  return (
+    <fieldset className="acq">
+      <legend>What you paid <span className="muted">(optional)</span></legend>
+      <label className="check-row">
+        <input type="checkbox" checked={gift} onChange={(e) => setGift(e.target.checked)} />
+        <span>It was a gift or inherited</span>
+      </label>
+      <div className="grid-2">
+        {!gift && (
+          <Field label="Purchase price">
+            <AmountInput value={price} onChange={setPrice} currency={currency} placeholder="Leave blank if unknown" />
+          </Field>
+        )}
+        <Field label={gift ? 'Date received' : 'Purchase date'}>
+          <input className="input" type="date" value={date} max={maxDate ?? todayISO()} onChange={(e) => setDate(e.target.value)} />
+        </Field>
+      </div>
+      <p className="field-hint">Gain since purchase is only shown when there's a real purchase price. Gifts, £0 or token amounts don't count.</p>
+    </fieldset>
   );
 }
 
@@ -224,7 +244,7 @@ export function UpdateValueModal({ title, currency, current, onSave, onClose }: 
         }}
       >
         <Field label="New value">
-          <AmountInput value={amount} onChange={setAmount} currency={currency} autoFocus />
+          <AmountInput value={amount} onChange={setAmount} currency={currency} autoFocus required />
         </Field>
         <Field label="As of" hint="Pick an earlier date to fill in past values.">
           <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
@@ -267,7 +287,7 @@ export function AddPositionModal({ holdingId, currency, onClose }: { holdingId: 
         </Field>
         <div className="grid-2">
           <Field label="Current value">
-            <AmountInput value={amount} onChange={setAmount} currency={currency} />
+            <AmountInput value={amount} onChange={setAmount} currency={currency} required />
           </Field>
           <Field label="As of">
             <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />

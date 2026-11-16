@@ -89,9 +89,9 @@ export function samplePortfolio(): Holding[] {
     }),
 
     // Assets
-    holding({ category: 'assets', type: 'watch', name: 'Rolex Submariner Date', details: { brand: 'Rolex', model: 'Submariner Date', reference: '126610LN', year: '2021' }, valuations: walk(12, 11650, { drift: 0.03, vol: 0.06, lastDay: 0.6, cadence: 30 }) }),
-    holding({ category: 'assets', type: 'watch', name: 'Omega Speedmaster Moonwatch', details: { brand: 'Omega', model: 'Speedmaster Professional', reference: '310.30.42.50.01.001', year: '2022' }, valuations: walk(13, 5480, { drift: 0.01, vol: 0.05, lastDay: 0.3, cadence: 30 }) }),
-    holding({ category: 'assets', type: 'car', name: 'Porsche 911 Carrera (997)', details: { make: 'Porsche', model: '911 Carrera 997', year: '2008' }, valuations: walk(14, 41500, { drift: 0.04, vol: 0.05, cadence: 60, steps: true }) }),
+    holding({ category: 'assets', type: 'watch', name: 'Rolex Submariner Date', details: { brand: 'Rolex', model: 'Submariner Date', reference: '126610LN', year: '2021' }, acquisition: { price: 9800, date: addDays(todayISO(), -730) }, valuations: walk(12, 11650, { drift: 0.03, vol: 0.06, lastDay: 0.6, cadence: 30 }) }),
+    holding({ category: 'assets', type: 'watch', name: 'Omega Speedmaster Moonwatch', details: { brand: 'Omega', model: 'Speedmaster Professional', reference: '310.30.42.50.01.001', year: '2022' }, acquisition: { gift: true, date: addDays(todayISO(), -700) }, valuations: walk(13, 5480, { drift: 0.01, vol: 0.05, lastDay: 0.3, cadence: 30 }) }),
+    holding({ category: 'assets', type: 'car', name: 'Porsche 911 Carrera (997)', details: { make: 'Porsche', model: '911 Carrera 997', year: '2008' }, acquisition: { price: 36500, date: addDays(todayISO(), -730) }, valuations: walk(14, 41500, { drift: 0.04, vol: 0.05, cadence: 60, steps: true }) }),
     holding({ category: 'assets', type: 'gold', name: 'Gold bars', details: { metal: 'Gold', weight: '100 g' }, valuations: walk(15, 9420, { drift: 0.22, vol: 0.12, lastDay: 0.9, cadence: 14 }) }),
   ];
 }

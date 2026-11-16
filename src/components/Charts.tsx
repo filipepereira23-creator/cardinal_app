@@ -3,6 +3,12 @@ import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, T
 import { formatMoney, type CurrencyCode } from '../config/currencies';
 import type { SeriesPoint } from '../domain/calc';
 import { formatDate, parseISO } from '../domain/dates';
+import { useStore } from '../state/store';
+
+function useChartTheme() {
+  const { theme } = useStore();
+  return theme === 'dark' ? { grid: '#2a2a2f', tick: '#8f8f96', dotRing: '#17171a' } : { grid: '#F0F0F0', tick: '#8A8A8E', dotRing: '#fff' };
+}
 
 export const LINE_COLORS = ['#1F6FB2', '#2E9E6A', '#C9A227', '#7A3E9D', '#E07B39', '#0097A7', '#6D6D6D', '#B5446E', '#5C7A29', '#3949AB'];
 
@@ -32,6 +38,7 @@ function ChartTooltip({ active, payload, label, ccy, names }: any) {
 /** The red area chart used for net worth and single totals. */
 export function AreaTrend({ series, dataKey = 'total', ccy, height = 220, mini = false, color = '#DB0011' }: { series: SeriesPoint[]; dataKey?: string; ccy: CurrencyCode; height?: number; mini?: boolean; color?: string }) {
   const id = useId().replace(/:/g, '');
+  const t = useChartTheme();
   const values = series.map((p) => Number(p[dataKey]));
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -46,11 +53,11 @@ export function AreaTrend({ series, dataKey = 'total', ccy, height = 220, mini =
               <stop offset="100%" stopColor={color} stopOpacity={0.02} />
             </linearGradient>
           </defs>
-          {!mini && <CartesianGrid vertical={false} stroke="#F0F0F0" />}
-          <XAxis dataKey="date" hide={mini} tickFormatter={tickFormatter(series)} tick={{ fontSize: 11, fill: '#8A8A8E' }} axisLine={false} tickLine={false} minTickGap={36} />
-          <YAxis hide={mini} domain={[min - pad, max + pad]} tickFormatter={(v) => formatMoney(v, ccy, { compact: true, decimals: false })} tick={{ fontSize: 11, fill: '#8A8A8E' }} axisLine={false} tickLine={false} width={56} />
+          {!mini && <CartesianGrid vertical={false} stroke={t.grid} />}
+          <XAxis dataKey="date" hide={mini} tickFormatter={tickFormatter(series)} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} minTickGap={36} />
+          <YAxis hide={mini} domain={[min - pad, max + pad]} tickFormatter={(v) => formatMoney(v, ccy, { compact: true, decimals: false })} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} width={56} />
           {!mini && <Tooltip content={<ChartTooltip ccy={ccy} />} cursor={{ stroke: '#DB0011', strokeOpacity: 0.3 }} />}
-          <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={mini ? 1.5 : 2.2} fill={`url(#g${id})`} isAnimationActive={!mini} animationDuration={500} dot={false} activeDot={{ r: 4, fill: color, stroke: '#fff', strokeWidth: 2 }} />
+          <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={mini ? 1.5 : 2.2} fill={`url(#g${id})`} isAnimationActive={!mini} animationDuration={500} dot={false} activeDot={{ r: 4, fill: color, stroke: t.dotRing, strokeWidth: 2 }} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -60,6 +67,7 @@ export function AreaTrend({ series, dataKey = 'total', ccy, height = 220, mini =
 /** Multi-line chart with a "Show on graph" legend to pick which lines to include. */
 export function MultiTrend({ series, lines, ccy, height = 260 }: { series: SeriesPoint[]; lines: { key: string; name: string; color: string }[]; ccy: CurrencyCode; height?: number }) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const t = useChartTheme();
   const names = useMemo(() => Object.fromEntries(lines.map((l) => [l.key, l.name])), [lines]);
   const toggle = (k: string) =>
     setHidden((h) => {
@@ -72,9 +80,9 @@ export function MultiTrend({ series, lines, ccy, height = 260 }: { series: Serie
       <div className="chart" style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
-            <CartesianGrid vertical={false} stroke="#F0F0F0" />
-            <XAxis dataKey="date" tickFormatter={tickFormatter(series)} tick={{ fontSize: 11, fill: '#8A8A8E' }} axisLine={false} tickLine={false} minTickGap={36} />
-            <YAxis tickFormatter={(v) => formatMoney(v, ccy, { compact: true, decimals: false })} tick={{ fontSize: 11, fill: '#8A8A8E' }} axisLine={false} tickLine={false} width={56} />
+            <CartesianGrid vertical={false} stroke={t.grid} />
+            <XAxis dataKey="date" tickFormatter={tickFormatter(series)} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} minTickGap={36} />
+            <YAxis tickFormatter={(v) => formatMoney(v, ccy, { compact: true, decimals: false })} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} width={56} />
             <Tooltip content={<ChartTooltip ccy={ccy} names={names} />} />
             {lines.filter((l) => !hidden.has(l.key)).map((l) => (
               <Line key={l.key} type="monotone" dataKey={l.key} stroke={l.color} strokeWidth={l.key === 'total' ? 2.6 : 1.8} dot={false} isAnimationActive animationDuration={400} />

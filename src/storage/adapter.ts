@@ -9,11 +9,15 @@
  * `StorageAdapter` + `AuthAdapter` against it and swap them in src/storage/index.ts.
  * Nothing in the UI needs to change.
  */
-import type { Portfolio, UserProfile } from '../domain/types';
+import type { Portfolio, Settings, UserProfile } from '../domain/types';
 
 export interface StorageAdapter {
   loadPortfolio(userId: string): Promise<Portfolio>;
   savePortfolio(userId: string, portfolio: Portfolio): Promise<void>;
+  loadSettings(userId: string): Promise<Settings>;
+  saveSettings(userId: string, settings: Settings): Promise<void>;
+  /** Removes everything stored for the user (portfolio and settings). */
+  deleteAll(userId: string): Promise<void>;
 }
 
 export interface AuthAdapter {
@@ -21,4 +25,6 @@ export interface AuthAdapter {
   login(email: string, password: string): Promise<UserProfile>;
   logout(): Promise<void>;
   currentUser(): Promise<UserProfile | null>;
+  updateProfile(userId: string, patch: { firstName?: string; lastName?: string; email?: string }): Promise<UserProfile>;
+  deleteAccount(userId: string): Promise<void>;
 }
