@@ -45,7 +45,7 @@ export function PathPage() {
       <section className="card path-hero">
         <div className="eyebrow">Your net worth path</div>
         <div className="path-level">Level {reached}<span className="muted"> of {MILESTONES.length}</span></div>
-        <div className="path-sub">You're at <b>{formatMoney(gbp, 'GBP', { decimals: false })}</b>{next ? <> — <b>{formatMoney(next - gbp, 'GBP', { decimals: false })}</b> to unlock level {reached + 1} ({label(next)}).</> : <> — every level unlocked. Legend.</>}</div>
+        <div className="path-sub">You're at <b>{formatMoney(gbp, 'GBP', { decimals: false })}</b>{next ? <>, <b>{formatMoney(next - gbp, 'GBP', { decimals: false })}</b> to unlock level {reached + 1} ({label(next)}).</> : <>, every level unlocked. Legend.</>}</div>
         {next && (
           <div className="path-bar" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
             <i style={{ width: `${pct}%` }} />
@@ -79,7 +79,7 @@ export function PathPage() {
 
       <section className="card path-info">
         <div className="eyebrow">Level {info + 1} · {label(MILESTONES[info])}</div>
-        <p><b>{gbp >= MILESTONES[info] ? 'Unlocked' : 'Locked'}</b> — reach {formatMoney(MILESTONES[info], 'GBP', { decimals: false })} of net worth{gbp < MILESTONES[info] ? <>, {formatMoney(MILESTONES[info] - gbp, 'GBP', { decimals: false })} to go</> : null}.</p>
+        <p><b>{gbp >= MILESTONES[info] ? 'Unlocked' : 'Locked'}</b>: reach {formatMoney(MILESTONES[info], 'GBP', { decimals: false })} of net worth{gbp < MILESTONES[info] ? <>, {formatMoney(MILESTONES[info] - gbp, 'GBP', { decimals: false })} to go</> : null}.</p>
         <p className="muted small">Reward from our official partners: coming soon.</p>
       </section>
     </div>

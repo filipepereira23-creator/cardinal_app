@@ -186,11 +186,11 @@ function CategoryPanel({ category }: { category: CategoryId }) {
             <div className="growth">
               <div className="growth-item">
                 <span className="growth-label">Monthly payments</span>
-                <span className="growth-val">{debtSummary.monthly > 0 ? formatMoney(debtSummary.monthly, currency, { decimals: false }) : '—'}</span>
+                <span className="growth-val">{debtSummary.monthly > 0 ? formatMoney(debtSummary.monthly, currency, { decimals: false }) : '-'}</span>
               </div>
               <div className="growth-item">
                 <span className="growth-label">Average rate</span>
-                <span className="growth-val">{debtSummary.avgRate !== null ? `${debtSummary.avgRate.toFixed(2)}%` : '—'}</span>
+                <span className="growth-val">{debtSummary.avgRate !== null ? `${debtSummary.avgRate.toFixed(2)}%` : '-'}</span>
                 <span className="growth-hint">Weighted by balance</span>
               </div>
             </div>

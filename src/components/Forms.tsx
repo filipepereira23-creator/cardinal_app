@@ -115,7 +115,7 @@ function AreaEstimateBox({ details, ccy, onUse }: { details: Record<string, stri
   const v = Math.round(convert(e.value, 'GBP', ccy));
   return (
     <div className="hpi-card">
-      <div><b>Area estimate: {formatMoney(v, ccy, { decimals: false })}</b> — {e.area} ({e.district}) sells for about {formatMoney(convert(e.psm, 'GBP', ccy), ccy, { decimals: false })} per m², × {e.sqm} m².</div>
+      <div><b>Area estimate: {formatMoney(v, ccy, { decimals: false })}</b>: {e.area} ({e.district}) sells for about {formatMoney(convert(e.psm, 'GBP', ccy), ccy, { decimals: false })} per m², × {e.sqm} m².</div>
       <div><button type="button" className="btn btn-outline btn-sm" onClick={() => onUse(v)}>Use this value</button> <span className="muted small">or type your own below</span></div>
     </div>
   );
@@ -288,7 +288,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
         )}
         {pricingMode(typeId) === 'estimate' && <p className="field-hint">There's no free live price feed for this, so type in today's value. Once it's added, Cardinal suggests a free automatic estimate ({typeId === 'car' ? 'from the year and mileage' : 'from the brand\'s market trend'}) and links to check the market price.</p>}
         {pricingMode(typeId) === 'index' && <p className="field-hint">You can always type in your own value. Cardinal can also suggest one from London prices per square metre, and track it with the HM Land Registry house price index.</p>}
-        {isDebtCat && <p className="field-hint">Debts subtract from your net worth. Only structured details are kept (type, lender, balance, rate) — no account numbers needed.</p>}
+        {isDebtCat && <p className="field-hint">Debts subtract from your net worth. Only structured details are kept (type, lender, balance, rate): no account numbers needed.</p>}
         {type.allowsPositions && <p className="field-hint">You can add the individual funds, shares or coins inside it once it's added.</p>}
         {err && <p className="error">{err}</p>}
         <div className="form-actions">

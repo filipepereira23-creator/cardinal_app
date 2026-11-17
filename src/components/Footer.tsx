@@ -118,7 +118,7 @@ export function Footer() {
           <ul>
             {SOCIALS.map((s) => (
               <li key={s.id}>
-                <a href="#" onClick={(e) => e.preventDefault()} aria-disabled="true" title={`${s.label} – coming soon`}>
+                <a href="#" onClick={(e) => e.preventDefault()} aria-disabled="true" title={`${s.label} - coming soon`}>
                   <SocialIcon name={s.id} />
                   <span>{s.label}</span>
                 </a>

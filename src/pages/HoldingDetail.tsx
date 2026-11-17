@@ -382,7 +382,7 @@ function AreaSuggestion({ h }: { h: Holding }) {
   return (
     <div className="hpi-card">
       <div>
-        <b>Area estimate: {formatMoney(convert(e.value, 'GBP', currency), currency, { decimals: false })}</b> — {e.area} ({e.district}) median {formatMoney(convert(e.psm, 'GBP', currency), currency, { decimals: false })} per m² × {e.sqm} m².
+        <b>Area estimate: {formatMoney(convert(e.value, 'GBP', currency), currency, { decimals: false })}</b>: {e.area} ({e.district}) median {formatMoney(convert(e.psm, 'GBP', currency), currency, { decimals: false })} per m² × {e.sqm} m².
       </div>
       <span className="muted small">HM Land Registry sold prices matched to EPC floor areas, 12 months to {e.asOf} ({e.sales} sales). A district average, so your own value may differ. <a href={LONDON_PSM_SOURCE_URL} target="_blank" rel="noreferrer">Source</a></span>
       <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: Math.round(v) })}>Use this estimate</button></div>
@@ -412,7 +412,7 @@ function HpiSuggestion({ h }: { h: Holding }) {
         <b>House price index estimate:</b>{' '}
         {same
           ? <>no newer index data since your last value ({month(est.toMonth)} is the latest published for {est.area}).</>
-          : <>{formatMoney(convert(est.value, h.currency, currency), currency, { decimals: false })} — {est.area} prices moved {formatPct(est.changePct)} from {month(est.fromMonth)} to {month(est.toMonth)}.</>}
+          : <>{formatMoney(convert(est.value, h.currency, currency), currency, { decimals: false })}: {est.area} prices moved {formatPct(est.changePct)} from {month(est.fromMonth)} to {month(est.toMonth)}.</>}
       </div>
       <span className="muted small">HM Land Registry UK House Price Index, an area average for all property types; it lags about two months. <a href={est.url} target="_blank" rel="noreferrer">Source</a></span>
       {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: est.value })}>Use this estimate</button></div>}
@@ -436,7 +436,7 @@ function WatchSuggestion({ h }: { h: Holding }) {
         <span className="tag-est">Estimate</span>{' '}
         {same
           ? <>{e.brand} prices moved <b>{formatPct(e.trendPct)}</b> over the last year. Your value is from this week, so there's nothing to adjust yet.</>
-          : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b> — your value from {formatDate(e.base.date, 'long')} moved by the {e.brand} market trend ({formatPct(e.trendPct)} a year{e.appliedYears < 1 ? `, ${fmtYears(e.appliedYears)} of it` : ''}).</>}
+          : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b>: your value from {formatDate(e.base.date, 'long')} moved by the {e.brand} market trend ({formatPct(e.trendPct)} a year{e.appliedYears < 1 ? `, ${fmtYears(e.appliedYears)} of it` : ''}).</>}
       </div>
       <span className="muted small">
         WatchCharts {e.brand} index, 1-year change, as of {WATCH_INDEX_AS_OF}. A brand average of its 30 most traded models, not your exact watch{e.olderThanYear ? '; your last value is over a year old and only the last 12 months of trend are known, so check the price link too' : ''}. <a href={WATCH_INDEX_URL} target="_blank" rel="noreferrer">Source</a>
@@ -459,7 +459,7 @@ function CarSuggestion({ h }: { h: Holding }) {
         <span className="tag-est">Estimate</span>{' '}
         {same
           ? <>{e.classic ? 'Over 25 years old, so treated as a classic and held at your value.' : 'Your value is recent, so typical depreciation hasn\'t moved it yet.'}</>
-          : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b> — typical depreciation for a car aged {fmtYears(e.ageThen)} → {fmtYears(e.ageNow)} ({formatPct(e.changePct)}) from your {e.base.kind} of {formatMoney(convert(e.base.value, h.currency, currency), currency, { decimals: false })}{e.mileageAdjPct ? `, ${e.mileageAdjPct > 0 ? 'plus' : 'minus'} ${Math.abs(e.mileageAdjPct)}% for mileage` : ''}.</>}
+          : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b>: typical depreciation for a car aged {fmtYears(e.ageThen)} → {fmtYears(e.ageNow)} ({formatPct(e.changePct)}) from your {e.base.kind} of {formatMoney(convert(e.base.value, h.currency, currency), currency, { decimals: false })}{e.mileageAdjPct ? `, ${e.mileageAdjPct > 0 ? 'plus' : 'minus'} ${Math.abs(e.mileageAdjPct)}% for mileage` : ''}.</>}
       </div>
       <span className="muted small">Average UK curve (about 25% in year one, around 60% gone by year five, flattening after eight; AA, RAC). Real prices vary a lot by model and condition, so check the free valuation links too. <a href={CAR_CURVE_SOURCE_URL} target="_blank" rel="noreferrer">Source</a></span>
       {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: e.value })}>Use this estimate</button></div>}

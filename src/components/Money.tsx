@@ -46,11 +46,11 @@ export function GrowthStats({ change, periodLabel, note }: { change: Change; per
     <div className="growth" title={note}>
       <div className="growth-item">
         <span className="growth-label">Change · {periodLabel}</span>
-        <span className={`growth-val g-${pctDir}`}>{change.pct === null ? '—' : formatPct(change.pct)}</span>
+        <span className={`growth-val g-${pctDir}`}>{change.pct === null ? '-' : formatPct(change.pct)}</span>
       </div>
       <div className="growth-item">
         <span className="growth-label">Annualised</span>
-        <span className={`growth-val g-${annDir}`} title={annHint}>{change.annualised === null ? '—' : formatPct(change.annualised)}</span>
+        <span className={`growth-val g-${annDir}`} title={annHint}>{change.annualised === null ? '-' : formatPct(change.annualised)}</span>
         {change.annualised === null && <span className="growth-hint">{annHint}</span>}
       </div>
     </div>
