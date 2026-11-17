@@ -49,7 +49,7 @@ export const HOLDING_TYPES: HoldingType[] = [
   { id: 'watch', category: 'assets', label: 'Watch', providerKinds: [], allowsPositions: false, icon: 'watch',
     fields: [{ key: 'brand', label: 'Brand', placeholder: 'Rolex' }, { key: 'model', label: 'Model', placeholder: 'Day-Date 40' }, { key: 'reference', label: 'Reference', placeholder: '228238' }, { key: 'year', label: 'Year', placeholder: '2019' }] },
   { id: 'car', category: 'assets', label: 'Car', providerKinds: [], allowsPositions: false, icon: 'car',
-    fields: [{ key: 'make', label: 'Make', placeholder: 'Porsche' }, { key: 'model', label: 'Model', placeholder: '911 Carrera' }, { key: 'year', label: 'Year', placeholder: '2008' }, { key: 'registration', label: 'Registration', placeholder: 'Optional' }] },
+    fields: [{ key: 'make', label: 'Make', placeholder: 'Porsche' }, { key: 'model', label: 'Model', placeholder: '911 Carrera' }, { key: 'year', label: 'Year', placeholder: '2008' }, { key: 'mileage', label: 'Mileage', placeholder: 'Optional, e.g. 42000', numeric: true }, { key: 'registration', label: 'Registration', placeholder: 'Optional' }] },
   { id: 'property', category: 'assets', label: 'Property', providerKinds: [], allowsPositions: false, icon: 'house',
     fields: [{ key: 'address', label: 'Address', placeholder: 'Street, city' }, { key: 'postcode', label: 'Postcode', placeholder: 'SW5 0JQ' }, { key: 'sqm', label: 'Floor area (m²)', placeholder: '75', numeric: true }] },
   { id: 'chalet', category: 'assets', label: 'Chalet', providerKinds: [], allowsPositions: false, icon: 'chalet',

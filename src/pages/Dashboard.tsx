@@ -19,6 +19,7 @@ import { ConnectFlow } from '../components/ConnectFlow';
 import { ProviderMark } from '../components/ProviderMark';
 import { Icon } from '../components/Icon';
 import { WhatMoved } from './WhatMoved';
+import { touchStreak } from '../domain/streak';
 import { providerById } from '../data/providers';
 import { typeById, typesFor } from '../data/holdingTypes';
 import type { Provider, ProviderKind } from '../data/providers';
@@ -41,6 +42,7 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
   const rangeDesc = RANGES.find((r) => r.id === range)!.desc;
   const rangeLabel = RANGES.find((r) => r.id === range)!.label;
   const empty = holdings.length === 0;
+  const streak = useMemo(() => (user ? touchStreak(user.id) : null), [user]);
 
   return (
     <div className="page">
@@ -48,7 +50,14 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
       <section className="card hero">
         <div className="hero-top">
           <div>
-            <div className="eyebrow">Total net worth</div>
+            <div className="eyebrow-row">
+              <div className="eyebrow">Total net worth</div>
+              {streak && streak.count >= 2 && (
+                <span className="streak" title={`Open Cardinal every day to keep your streak going. Best: ${streak.best} days.`}>
+                  <Icon name="sparkle" size={12} />{streak.count}-day streak
+                </span>
+              )}
+            </div>
             <div className="hero-figure"><Money value={total} ccy={currency} /></div>
             {!empty && (
               <div className="hero-change">

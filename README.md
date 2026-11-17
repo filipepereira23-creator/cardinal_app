@@ -27,7 +27,7 @@ Pushing to `main` deploys automatically to GitHub Pages (`.github/workflows/depl
 | `src/data/sample.ts` | Optional sample portfolio with two years of history |
 | `src/integrations/` | **Placeholder for live provider connections** (Open Banking, pensions, platforms, crypto). `openBanking.ts` holds the consent screen's permission lists and `startConsent()` |
 | `src/integrations/email/` | **Seam for transactional email** (account confirmation). No-op until a backend exists: a static site can't send email |
-| `src/valuation/` | **Live asset prices**: gold/silver/platinum/palladium spot (gold-api.com), property index estimate (HM Land Registry UKHPI + postcodes.io), Chrono24 / Auto Trader / Zoopla check-price links |
+| `src/valuation/` | **Free asset pricing** (header of `valuers.ts` lists every source). Live: metals spot (gold-api.com), crypto coins (Coinbase public rates), sold prices on the same street (HM Land Registry Price Paid Data, SPARQL). Estimates: London £/m², UK house price index, watch brand trend (WatchCharts public indexes, refreshed per release), car depreciation curve. Check-price links: Chrono24, WatchCharts, Auto Trader, moValue, Zoopla |
 | `src/domain/debts.ts` | **Debts**: structured fields only, plus `anonymisedDebt()` for future anonymous aggregation |
 | `src/storage/` | Accounts and data storage. v1 = browser storage; swap in a hosted backend here |
 

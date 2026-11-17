@@ -25,6 +25,8 @@ export interface Position {
   name: string;
   /** Optional ticker / ISIN / coin symbol. */
   symbol?: string;
+  /** Crypto only: number of coins held. With a symbol, today's value comes from the live price. */
+  quantity?: number;
   valuations: Valuation[];
 }
 

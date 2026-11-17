@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Logo } from './Logo';
+import { FlyingBird } from './Logo';
 import { CurrencySelect } from './CurrencySelect';
 import { Icon } from './Icon';
 import { useStore } from '../state/store';
@@ -12,7 +12,10 @@ export function Header() {
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <a href="#/dashboard" className="plain"><Logo size={30} /></a>
+        <span className="logo">
+          <FlyingBird size={30} onTap={() => { if (!window.location.hash.startsWith('#/dashboard')) go('dashboard'); }} />
+          <a href="#/dashboard" className="plain logo-word">Cardinal</a>
+        </span>
         <div className="header-right">
           <CurrencySelect />
           <a href="#/settings" className="icon-btn header-gear" aria-label="Settings" title="Settings"><Icon name="gear" size={20} /></a>

@@ -10,6 +10,8 @@ import { email } from '../integrations/email';
 import { fxIsFresh, initialFx, loadLiveFx, type FxInfo } from '../config/fx';
 import { loadSpot, readCachedSpot, spotIsFresh, type SpotPrices } from '../valuation/metals';
 import { goldQuote } from '../valuation/valuers';
+import { coinPriceUsd, cryptoIsFresh, loadCrypto, readCachedCrypto, type CryptoPrices } from '../valuation/crypto';
+import { convert } from '../config/currencies';
 import { todayISO } from '../domain/dates';
 import { isCurrency } from '../config/currencies';
 
@@ -48,7 +50,7 @@ interface Store {
   deleteHolding(id: string): void;
   addValuation(holdingId: string, v: Valuation, positionId?: string): void;
   deleteValuation(holdingId: string, date: string, positionId?: string): void;
-  addPosition(holdingId: string, p: { name: string; symbol?: string; value: number; date: string }): void;
+  addPosition(holdingId: string, p: { name: string; symbol?: string; quantity?: number; value: number; date: string }): void;
   updatePosition(holdingId: string, positionId: string, patch: Partial<Position>): void;
   deletePosition(holdingId: string, positionId: string): void;
   loadSample(): void;
@@ -66,6 +68,8 @@ interface Store {
   fx: FxInfo;
   /** Live precious-metal spot prices, or null when unavailable. */
   spot: SpotPrices | null;
+  /** Live crypto prices (Coinbase), or null when unavailable. */
+  crypto: CryptoPrices | null;
   /** Bumps whenever rates or prices change, so memoised charts recompute. */
   marketVersion: number;
   refreshMarket(): Promise<void>;
@@ -97,15 +101,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [fx, setFx] = useState<FxInfo>(initialFx);
   const [spot, setSpot] = useState<SpotPrices | null>(readCachedSpot);
   const [marketVersion, setMarketVersion] = useState(0);
+  const [crypto, setCrypto] = useState<CryptoPrices | null>(readCachedCrypto);
 
   const refreshMarket = useCallback(async (force = true) => {
-    const [f, sp] = await Promise.all([
+    const [f, sp, cr] = await Promise.all([
       force || !fxIsFresh(initialFx()) ? loadLiveFx() : Promise.resolve(null),
       force || !spotIsFresh(readCachedSpot()) ? loadSpot() : Promise.resolve(null),
+      force || !cryptoIsFresh(readCachedCrypto()) ? loadCrypto() : Promise.resolve(null),
     ]);
     if (f) setFx(f);
     if (sp) setSpot(sp);
-    if (f || sp) setMarketVersion((v) => v + 1);
+    if (cr) setCrypto(cr);
+    if (f || sp || cr) setMarketVersion((v) => v + 1);
   }, []);
 
   // Live exchange rates and metal prices on load (cached ones are already applied).
@@ -171,6 +178,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }),
     }));
   }, [spot, fx, portfolio.holdings]);
+
+  // Coins with a symbol and a quantity are valued live: today's value = quantity × Coinbase price.
+  useEffect(() => {
+    if (!crypto) return;
+    const today = todayISO();
+    let changed = false;
+    const holdings = portfolio.holdings.map((h) => {
+      if (h.category !== 'crypto' || !h.positions.some((p) => p.quantity)) return h;
+      let touched = false;
+      const positions = h.positions.map((p) => {
+        const usd = p.quantity ? coinPriceUsd(p.symbol, crypto) : null;
+        if (!usd || !p.quantity) return p;
+        const value = Math.round(convert(usd * p.quantity, 'USD', h.currency) * 100) / 100;
+        const cur = p.valuations.find((v) => v.date === today);
+        if (cur && Math.abs(cur.value - value) < 0.01) return p;
+        touched = true;
+        return { ...p, valuations: upsert(p.valuations, { date: today, value }) };
+      });
+      if (!touched) return h;
+      changed = true;
+      return { ...h, positions };
+    });
+    if (changed) setPortfolio((p) => ({ ...p, holdings }));
+  }, [crypto, fx, portfolio.holdings]);
 
   const signIn = useCallback(async (u: UserProfile, isNew = false) => {
     const p = clean(await storage.loadPortfolio(u.id));
@@ -242,6 +273,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       confirmationEmailSent,
       fx,
       spot,
+      crypto,
       marketVersion,
       refreshMarket: () => refreshMarket(true),
       addHolding: (h) => {
@@ -263,14 +295,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ? { ...h, positions: h.positions.map((p) => (p.id === pid ? { ...p, valuations: p.valuations.filter((x) => x.date !== date) } : p)) }
             : { ...h, valuations: h.valuations.filter((x) => x.date !== date) },
         ),
-      addPosition: (hid, { name, symbol, value, date }) =>
+      addPosition: (hid, { name, symbol, quantity, value, date }) =>
         mapHolding(hid, (h) => {
           const positions = [...h.positions];
           // First position: keep the account's existing history as an "Other" line so nothing is lost.
           if (!positions.length && h.valuations.length) {
             positions.push({ id: uid(), name: 'Other / uninvested', valuations: h.valuations });
           }
-          positions.push({ id: uid(), name, symbol, valuations: [{ date, value }] });
+          positions.push({ id: uid(), name, symbol, quantity, valuations: [{ date, value }] });
           return { ...h, positions, valuations: [] };
         }),
       updatePosition: (hid, pid, patch) =>
@@ -279,7 +311,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       loadSample: () => mutate((hs) => [...hs, ...samplePortfolio()]),
       clearAll: () => mutate(() => []),
     }),
-    [ready, user, portfolio, range, settings, theme, confirmationEmailSent, signIn, signOutLocal, mutate, mapHolding, fx, spot, marketVersion, refreshMarket],
+    [ready, user, portfolio, range, settings, theme, confirmationEmailSent, signIn, signOutLocal, mutate, mapHolding, fx, spot, crypto, marketVersion, refreshMarket],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ComposedChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatMoney, type CurrencyCode } from '../config/currencies';
 import type { SeriesPoint } from '../domain/calc';
@@ -104,31 +104,87 @@ export function MultiTrend({ series, lines, ccy, height = 260 }: { series: Serie
   );
 }
 
-/** Net worth history (solid area) with a dotted forecast line continuing from today. */
+/** Calendar-aligned tick steps, in months, from finest to coarsest. */
+const TICK_STEPS = [1, 2, 3, 6, 12, 24, 60, 120];
+
+/**
+ * One tick interval for the whole axis (history and forecast alike), aligned to the calendar:
+ * the finest step whose ticks fit the available width. When ticks would crowd, the step grows
+ * for the entire axis, so spacing never differs between the past and the projection.
+ */
+export function uniformTicks(startMs: number, endMs: number, maxTicks: number): { ticks: number[]; months: number } {
+  const s = new Date(startMs);
+  for (const months of TICK_STEPS) {
+    const ticks: number[] = [];
+    // First boundary on or after the start, aligned so that (year*12 + month) % step === 0.
+    let idx = Math.ceil((s.getFullYear() * 12 + s.getMonth() + (s.getDate() > 1 ? 1 : 0)) / months) * months;
+    for (;;) {
+      const t = new Date(Math.floor(idx / 12), idx % 12, 1).getTime();
+      if (t > endMs) break;
+      ticks.push(t);
+      idx += months;
+    }
+    if (ticks.length <= Math.max(2, maxTicks) || months === TICK_STEPS[TICK_STEPS.length - 1]) return { ticks, months };
+  }
+  return { ticks: [], months: 12 };
+}
+
+function useWidth<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [w, setW] = useState(360);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width));
+    ro.observe(el);
+    setW(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w] as const;
+}
+
+/**
+ * Net worth history (solid area) with a dotted forecast line continuing from today.
+ * The horizontal axis is real time, so a year of history takes the same width as a year of forecast.
+ */
 export function ForecastTrend({ series, ccy, height = 260 }: { series: SeriesPoint[]; ccy: CurrencyCode; height?: number }) {
   const id = useId().replace(/:/g, '');
   const t = useChartTheme();
+  const [ref, width] = useWidth<HTMLDivElement>();
   const today = todayISO();
+  const data = useMemo(() => series.map((p) => ({ ...p, t: parseISO(p.date).getTime() })), [series]);
   const vals = series.flatMap((p) => [p.total, p.forecast].filter((v) => typeof v === 'number') as number[]);
   const min = Math.min(...vals);
   const max = Math.max(...vals);
   const pad = (max - min) * 0.08 || 1;
-  const tip = ({ active, payload, label }: any) => {
+  const startMs = data[0]?.t ?? 0;
+  const endMs = data[data.length - 1]?.t ?? 0;
+  const plotW = Math.max(120, width - 56 - 12);
+  const probe = uniformTicks(startMs, endMs, Math.floor(plotW / 46));
+  // Year labels ("2031") are narrower than month labels ("Mar 27").
+  const { ticks, months } = probe.months >= 12 ? uniformTicks(startMs, endMs, Math.floor(plotW / 34)) : probe;
+  const fmtTick = (ms: number) => {
+    const d = new Date(ms);
+    return months >= 12 ? String(d.getFullYear()) : d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+  };
+  const tip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
-    const future = label > today;
+    const row = payload[0]?.payload;
+    if (!row) return null;
+    const future = row.date > today;
     const p = payload.find((x: any) => x.value !== undefined && x.value !== null);
     if (!p) return null;
     return (
       <div className="chart-tip">
-        <div className="chart-tip-date">{formatDate(label, 'long')}</div>
+        <div className="chart-tip-date">{formatDate(row.date, 'long')}</div>
         <div className="chart-tip-row"><b>{formatMoney(p.value, ccy)}</b>{future && <span className="muted"> forecast*</span>}</div>
       </div>
     );
   };
   return (
-    <div className="chart" style={{ height }}>
+    <div className="chart" style={{ height }} ref={ref} data-tick-months={months}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={series} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id={`g${id}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#DB0011" stopOpacity={0.28} />
@@ -136,7 +192,7 @@ export function ForecastTrend({ series, ccy, height = 260 }: { series: SeriesPoi
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke={t.grid} />
-          <XAxis dataKey="date" tickFormatter={(d: string) => formatDate(d, 'month')} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} minTickGap={36} />
+          <XAxis dataKey="t" type="number" scale="time" domain={[startMs, endMs]} ticks={ticks} interval={0} tickFormatter={fmtTick} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} />
           <YAxis domain={[Math.max(0, min - pad), max + pad]} tickFormatter={(v) => formatMoney(v, ccy, { compact: true, decimals: false })} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} width={56} />
           <Tooltip content={tip} cursor={{ stroke: '#DB0011', strokeOpacity: 0.3 }} />
           <Area type="monotone" dataKey="total" stroke="#DB0011" strokeWidth={2.2} fill={`url(#g${id})`} dot={false} isAnimationActive={false} connectNulls={false} />

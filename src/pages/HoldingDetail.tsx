@@ -12,6 +12,9 @@ import { metalSpec, spotPerGram } from '../valuation/metals';
 import { areaLookup } from '../valuation/areaPrice';
 import { LONDON_PSM_SOURCE_URL } from '../data/londonPsm';
 import { hpiEstimate, type HpiEstimate } from '../valuation/houseIndex';
+import { PPD_ATTRIBUTION, PPD_URL, recentSales, type SalesResult } from '../valuation/streetSales';
+import { CAR_CURVE_SOURCE_URL, carEstimate } from '../valuation/carEstimate';
+import { WATCH_INDEX_AS_OF, WATCH_INDEX_URL, brandTrend, watchChartsLink, watchEstimate } from '../valuation/watchEstimate';
 import { AreaTrend } from '../components/Charts';
 import { ChangePill, GrowthStats, Money } from '../components/Money';
 import { RangeTabs } from '../components/RangeTabs';
@@ -131,7 +134,7 @@ export function HoldingDetail({ id }: { id: string }) {
                     <span className="pmark pmark-icon"><b className="small">{(pos.symbol || pos.name).slice(0, 4).toUpperCase()}</b></span>
                     <span className="row-main">
                       <span className="row-title">{pos.name}</span>
-                      <span className="row-sub">{share.toFixed(1)}% of account</span>
+                      <span className="row-sub">{pos.quantity && pos.symbol ? <><span className="live-dot-inline" title="Live price" />{+pos.quantity.toFixed(8)} {pos.symbol}</> : `${share.toFixed(1)}% of account`}</span>
                     </span>
                     <span className="row-end">
                       <Money value={pv} ccy={currency} />
@@ -352,6 +355,7 @@ function ValueSource({ h }: { h: Holding }) {
         {link && (
           <span className="price-links">
             <a href={link.url} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> {link.label}</a>
+            {h.type === 'watch' && <a href={watchChartsLink(h)} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free WatchCharts price</a>}
             {h.type === 'car' && <a href={MOVALUE_URL} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free moValue valuation</a>}
             {h.type === 'car' && <a href={AUTOTRADER_VALUATION_URL} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free Auto Trader valuation</a>}
           </span>
@@ -359,6 +363,9 @@ function ValueSource({ h }: { h: Holding }) {
       </div>
       {mode === 'index' && <AreaSuggestion h={h} />}
       {mode === 'index' && <HpiSuggestion h={h} />}
+      {mode === 'index' && <StreetSales h={h} />}
+      {h.type === 'watch' && <WatchSuggestion h={h} />}
+      {h.type === 'car' && <CarSuggestion h={h} />}
     </>
   );
 }
@@ -409,6 +416,94 @@ function HpiSuggestion({ h }: { h: Holding }) {
       </div>
       <span className="muted small">HM Land Registry UK House Price Index, an area average for all property types; it lags about two months. <a href={est.url} target="_blank" rel="noreferrer">Source</a></span>
       {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: est.value })}>Use this estimate</button></div>}
+    </div>
+  );
+}
+
+const fmtYears = (y: number) => (y < 1 ? `${Math.max(1, Math.round(y * 12))} months` : `${(Math.round(y * 10) / 10).toString()} years`);
+
+/** Watch: last value × brand's 1-year market trend (WatchCharts public index). */
+function WatchSuggestion({ h }: { h: Holding }) {
+  const { addValuation, currency } = useStore();
+  const e = watchEstimate(h);
+  if (!h.details?.brand) return <p className="field-hint">Add the brand (Edit) to get a free estimate from that brand's market trend.</p>;
+  if (!brandTrend(h.details.brand)) return <p className="field-hint">No free market index for {h.details.brand} yet, so no automatic estimate. Use the price links above and update the value by hand.</p>;
+  if (!e) return null;
+  const same = e.appliedYears < 1 / 52;
+  return (
+    <div className="hpi-card">
+      <div>
+        <span className="tag-est">Estimate</span>{' '}
+        {same
+          ? <>{e.brand} prices moved <b>{formatPct(e.trendPct)}</b> over the last year. Your value is from this week, so there's nothing to adjust yet.</>
+          : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b> — your value from {formatDate(e.base.date, 'long')} moved by the {e.brand} market trend ({formatPct(e.trendPct)} a year{e.appliedYears < 1 ? `, ${fmtYears(e.appliedYears)} of it` : ''}).</>}
+      </div>
+      <span className="muted small">
+        WatchCharts {e.brand} index, 1-year change, as of {WATCH_INDEX_AS_OF}. A brand average of its 30 most traded models, not your exact watch{e.olderThanYear ? '; your last value is over a year old and only the last 12 months of trend are known, so check the price link too' : ''}. <a href={WATCH_INDEX_URL} target="_blank" rel="noreferrer">Source</a>
+      </span>
+      {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: e.value })}>Use this estimate</button></div>}
+    </div>
+  );
+}
+
+/** Car: UK depreciation curve by age, with a mileage adjustment. */
+function CarSuggestion({ h }: { h: Holding }) {
+  const { addValuation, currency } = useStore();
+  const e = carEstimate(h);
+  if (!h.details?.year) return <p className="field-hint">Add the year (Edit) to get a free estimate from typical UK depreciation.</p>;
+  if (!e) return null;
+  const same = Math.abs(e.value - e.base.value) < 1;
+  return (
+    <div className="hpi-card">
+      <div>
+        <span className="tag-est">Estimate</span>{' '}
+        {same
+          ? <>{e.classic ? 'Over 25 years old, so treated as a classic and held at your value.' : 'Your value is recent, so typical depreciation hasn\'t moved it yet.'}</>
+          : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b> — typical depreciation for a car aged {fmtYears(e.ageThen)} → {fmtYears(e.ageNow)} ({formatPct(e.changePct)}) from your {e.base.kind} of {formatMoney(convert(e.base.value, h.currency, currency), currency, { decimals: false })}{e.mileageAdjPct ? `, ${e.mileageAdjPct > 0 ? 'plus' : 'minus'} ${Math.abs(e.mileageAdjPct)}% for mileage` : ''}.</>}
+      </div>
+      <span className="muted small">Average UK curve (about 25% in year one, around 60% gone by year five, flattening after eight; AA, RAC). Real prices vary a lot by model and condition, so check the free valuation links too. <a href={CAR_CURVE_SOURCE_URL} target="_blank" rel="noreferrer">Source</a></span>
+      {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: e.value })}>Use this estimate</button></div>}
+    </div>
+  );
+}
+
+/** Property: recent sold prices on the same street (HM Land Registry Price Paid Data, live). */
+function StreetSales({ h }: { h: Holding }) {
+  const { currency } = useStore();
+  const [r, setR] = useState<SalesResult | null | 'loading' | 'error'>('loading');
+  const [all, setAll] = useState(false);
+  const key = `${h.details?.postcode}|${h.details?.address}`;
+  useEffect(() => {
+    let live = true;
+    if (!h.details?.postcode) return;
+    setR('loading');
+    recentSales(h.details).then((x) => live && setR(x)).catch(() => live && setR('error'));
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  if (!h.details?.postcode) return null;
+  if (r === 'loading') return <p className="field-hint">Checking recent sold prices nearby…</p>;
+  if (r === 'error') return <p className="field-hint">Couldn't reach HM Land Registry sold prices just now.</p>;
+  if (!r || !r.sales.length) return <p className="field-hint">No recorded sales at this postcode in the last five years (sold prices cover England and Wales).</p>;
+  const shown = all ? r.sales.slice(0, 20) : r.sales.slice(0, 4);
+  const money = (n: number) => formatMoney(convert(n, 'GBP', currency), currency, { decimals: false, compact: n >= 1_000_000 });
+  return (
+    <div className="hpi-card sales-card">
+      <div>
+        <span className="tag-live"><span className="live-dot-inline" />Live</span>{' '}
+        <b>Sold prices {r.scope === 'street' ? `on ${r.label}` : `at ${r.label}`}</b>
+        {r.median !== null && <> · typical {money(r.median)} over the last 3 years</>}
+      </div>
+      {r.building.length > 0 && (
+        <div className="small"><b>In your building:</b> {r.building.slice(0, 3).map((s) => `${money(s.price)} (${formatDate(s.date, 'month')})`).join(', ')}</div>
+      )}
+      <ul className="sales">
+        {shown.map((s, i) => (
+          <li key={i}><span>{s.address}<span className="muted"> · {s.type} · {formatDate(s.date, 'month')}</span></span><b>{money(s.price)}</b></li>
+        ))}
+      </ul>
+      {r.sales.length > 4 && <button className="link-btn small" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show ${Math.min(20, r.sales.length)} recent sales`}</button>}
+      <span className="muted small">For comparison, not a valuation: sizes vary a lot. {PPD_ATTRIBUTION} <a href={PPD_URL} target="_blank" rel="noreferrer">Source</a></span>
     </div>
   );
 }

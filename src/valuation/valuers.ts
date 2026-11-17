@@ -1,19 +1,19 @@
 /**
- * ─── LIVE VALUATIONS FOR PHYSICAL ASSETS ───────────────────────────────────
+ * ─── VALUATIONS FOR PHYSICAL ASSETS AND COINS ──────────────────────────────
  *
- * Only sources that are public, free and callable straight from the browser are live.
- * Checked Nov 2026:
- *   • gold / silver / platinum / palladium → LIVE. gold-api.com spot price (free, no key,
- *     CORS: *) × weight × purity. See ./metals.ts. Recorded daily as a 'priced' valuation.
- *   • property → INDEX ESTIMATE. HM Land Registry UK House Price Index (free, CORS: *)
- *     for the local authority found via postcodes.io (free, CORS: *). Shown as a suggestion
- *     the user can apply; the HPI lags ~2 months and is an area average, not a valuation.
- *     Zoopla's public API was closed, so Zoopla is a link only.
- *   • watch → LINK ONLY. Chrono24 has no public API (dealer feeds only).
- *   • car   → LINK ONLY. Auto Trader Connect (valuations API) is for approved dealers/partners
- *     and paid. The consumer valuation page is linked instead.
+ * Only free sources that are legal to use and callable straight from the browser, with no secret key
+ * in this public bundle. Researched Nov 2026 (v1.4):
+ *   • gold / silver / platinum / palladium → LIVE. gold-api.com spot (free, no key, CORS). ./metals.ts
+ *   • crypto coins → LIVE. Coinbase public exchange rates (free, no key, CORS) × number of coins. ./crypto.ts
+ *   • property → ESTIMATES + LIVE CONTEXT. London £/m² × floor area (./areaPrice.ts), the HM Land Registry
+ *     house price index (./houseIndex.ts) and recent sold prices on the same street from HM Land
+ *     Registry Price Paid Data (SPARQL, free, CORS; ./streetSales.ts). Zoopla's API is closed: link only.
+ *   • watch → ESTIMATE. Last value × the brand's 1-year market trend from WatchCharts' public indexes,
+ *     refreshed per release (./watchEstimate.ts). Chrono24 has no API; the WatchCharts API is paid;
+ *     eBay's free API needs a private key and forbids price modelling.
+ *   • car → ESTIMATE. UK depreciation curve by age and mileage (./carEstimate.ts). Auto Trader / CAP HPI
+ *     are paid. DVLA Vehicle Enquiry and DVSA MOT History are free but need a private key: server to-do.
  *   • boat, art, jewellery, chalet, castle → manual.
- * Paid scrapers exist for Chrono24/Zoopla but would need a server and an API key.
  */
 import type { CurrencyCode } from '../config/currencies';
 import type { Holding } from '../domain/types';
@@ -42,11 +42,11 @@ export function goldQuote(h: Holding, spot: SpotPrices | null): Quote | null {
 }
 
 /** What each asset type can do, for the UI. */
-export type PricingMode = 'live' | 'index' | 'link' | 'manual';
+export type PricingMode = 'live' | 'index' | 'estimate' | 'link' | 'manual';
 export function pricingMode(typeId: string): PricingMode {
   if (typeId === 'gold') return 'live';
   if (typeId === 'property') return 'index';
-  if (typeId === 'watch' || typeId === 'car') return 'link';
+  if (typeId === 'watch' || typeId === 'car') return 'estimate';
   return 'manual';
 }
 

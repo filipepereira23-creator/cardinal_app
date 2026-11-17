@@ -10,6 +10,7 @@ import { useStore } from '../state/store';
 import { pricingMode } from '../valuation/valuers';
 import { areaLookup } from '../valuation/areaPrice';
 import { metalValue, spotPerGram, metalSpec, METALS } from '../valuation/metals';
+import { coinPriceUsd } from '../valuation/crypto';
 import type { FieldDef } from '../data/holdingTypes';
 import { Modal } from './Modal';
 import { ProviderMark } from './ProviderMark';
@@ -285,7 +286,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
         {category === 'assets' && (
           <AcquisitionFields currency={ccy} price={buyPrice} setPrice={setBuyPrice} date={buyDate} setDate={setBuyDate} gift={gift} setGift={setGift} maxDate={date} />
         )}
-        {pricingMode(typeId) === 'link' && <p className="field-hint">There's no free live price feed for this, so type in today's value. Once it's added you'll get a link to check the market price and a reminder to update it.</p>}
+        {pricingMode(typeId) === 'estimate' && <p className="field-hint">There's no free live price feed for this, so type in today's value. Once it's added, Cardinal suggests a free automatic estimate ({typeId === 'car' ? 'from the year and mileage' : 'from the brand\'s market trend'}) and links to check the market price.</p>}
         {pricingMode(typeId) === 'index' && <p className="field-hint">You can always type in your own value. Cardinal can also suggest one from London prices per square metre, and track it with the HM Land Registry house price index.</p>}
         {isDebtCat && <p className="field-hint">Debts subtract from your net worth. Only structured details are kept (type, lender, balance, rate) — no account numbers needed.</p>}
         {type.allowsPositions && <p className="field-hint">You can add the individual funds, shares or coins inside it once it's added.</p>}
@@ -357,39 +358,65 @@ export function UpdateValueModal({ title, currency, current, onSave, onClose }: 
 }
 
 export function AddPositionModal({ holdingId, currency, onClose }: { holdingId: string; currency: CurrencyCode; onClose: () => void }) {
-  const { addPosition } = useStore();
+  const { addPosition, holdings, crypto } = useStore();
+  const isCrypto = holdings.find((h) => h.id === holdingId)?.category === 'crypto';
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
+  const [qty, setQty] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(todayISO());
   const [err, setErr] = useState('');
+  const quantity = isCrypto && qty.trim() ? Number(qty.replace(/,/g, '')) : undefined;
+  const usd = isCrypto ? coinPriceUsd(symbol, crypto) : null;
+  const liveValue = usd && quantity && quantity > 0 ? Math.round(convert(usd * quantity, 'USD', currency) * 100) / 100 : null;
   return (
-    <Modal title="Add fund, share or coin" onClose={onClose}>
+    <Modal title={isCrypto ? 'Add a coin' : 'Add fund, share or coin'} onClose={onClose}>
       <form
         className="form"
         onSubmit={(e) => {
           e.preventDefault();
-          const v = parseAmount(amount);
-          if (!name.trim()) return setErr('Give it a name.');
-          if (!amount || Number.isNaN(v)) return setErr('Enter its current value.');
-          addPosition(holdingId, { name: name.trim(), symbol: symbol.trim() || undefined, value: v, date });
+          if (!name.trim() && !symbol.trim()) return setErr('Give it a name.');
+          if (quantity !== undefined && (Number.isNaN(quantity) || quantity <= 0)) return setErr('Number of coins should be a positive number, or leave it blank.');
+          const v = liveValue ?? parseAmount(amount);
+          if (liveValue === null && (!amount || Number.isNaN(v))) return setErr(isCrypto ? 'Enter its current value, or a symbol and number of coins for a live price.' : 'Enter its current value.');
+          addPosition(holdingId, { name: name.trim() || symbol.trim().toUpperCase(), symbol: symbol.trim().toUpperCase() || undefined, quantity: liveValue !== null ? quantity : undefined, value: v, date: liveValue !== null ? todayISO() : date });
           onClose();
         }}
       >
         <Field label="Name">
-          <input className="input" autoFocus placeholder="e.g. iShares NASDAQ 100 ETF" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="input" autoFocus placeholder={isCrypto ? 'e.g. Bitcoin' : 'e.g. iShares NASDAQ 100 ETF'} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Ticker or symbol (optional)">
-          <input className="input" placeholder="e.g. CNX1, BTC" value={symbol} onChange={(e) => setSymbol(e.target.value)} />
-        </Field>
-        <div className="grid-2">
-          <Field label="Current value">
-            <AmountInput value={amount} onChange={setAmount} currency={currency} required />
+        {isCrypto ? (
+          <div className="grid-2">
+            <Field label="Symbol">
+              <input className="input" placeholder="e.g. BTC" value={symbol} onChange={(e) => setSymbol(e.target.value)} autoCapitalize="characters" />
+            </Field>
+            <Field label="Number of coins">
+              <input className="input" inputMode="decimal" placeholder="e.g. 0.25" value={qty} onChange={(e) => setQty(e.target.value)} />
+            </Field>
+          </div>
+        ) : (
+          <Field label="Ticker or symbol (optional)">
+            <input className="input" placeholder="e.g. CNX1, VUSA" value={symbol} onChange={(e) => setSymbol(e.target.value)} />
           </Field>
-          <Field label="As of">
-            <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
-          </Field>
-        </div>
+        )}
+        {isCrypto && liveValue !== null && (
+          <div className="hpi-card">
+            <div><span className="live-dot-inline" /> <b>Live value: {formatMoney(liveValue, currency)}</b> ({formatMoney(convert(usd!, 'USD', currency), currency)} per {symbol.trim().toUpperCase()})</div>
+            <span className="muted small">Updates automatically from Coinbase prices every time you open Cardinal.</span>
+          </div>
+        )}
+        {isCrypto && symbol.trim() && quantity && !usd && <p className="field-hint">No live price found for {symbol.trim().toUpperCase()}. Type its value instead.</p>}
+        {liveValue === null && (
+          <div className="grid-2">
+            <Field label="Current value">
+              <AmountInput value={amount} onChange={setAmount} currency={currency} required={!isCrypto} />
+            </Field>
+            <Field label="As of">
+              <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
+            </Field>
+          </div>
+        )}
         {err && <p className="error">{err}</p>}
         <div className="form-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
