@@ -129,6 +129,16 @@ export function uniformTicks(startMs: number, endMs: number, maxTicks: number): 
   return { ticks: [], months: 12 };
 }
 
+/** Evenly spaced round-number ticks (steps of 1, 2, 2.5 or 5 × 10ⁿ) covering [lo, hi]. */
+function niceTicks(lo: number, hi: number, count: number): number[] {
+  const raw = (hi - lo) / Math.max(1, count - 1) || 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = ([1, 2, 2.5, 5, 10].find((m) => m * mag >= raw) ?? 10) * mag;
+  const out: number[] = [];
+  for (let v = Math.floor(lo / step) * step; v < hi + step * 0.999; v += step) out.push(Math.round(v * 100) / 100);
+  return out;
+}
+
 function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [w, setW] = useState(360);
@@ -157,6 +167,7 @@ export function ForecastTrend({ series, ccy, height = 260 }: { series: SeriesPoi
   const min = Math.min(...vals);
   const max = Math.max(...vals);
   const pad = (max - min) * 0.08 || 1;
+  const yTicks = niceTicks(Math.max(0, min - pad), max + pad, 5);
   const startMs = data[0]?.t ?? 0;
   const endMs = data[data.length - 1]?.t ?? 0;
   const plotW = Math.max(120, width - 56 - 12);
@@ -193,7 +204,7 @@ export function ForecastTrend({ series, ccy, height = 260 }: { series: SeriesPoi
           </defs>
           <CartesianGrid vertical={false} stroke={t.grid} />
           <XAxis dataKey="t" type="number" scale="time" domain={[startMs, endMs]} ticks={ticks} interval={0} tickFormatter={fmtTick} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} />
-          <YAxis domain={[Math.max(0, min - pad), max + pad]} tickFormatter={(v) => formatMoney(v, ccy, { compact: true, decimals: false })} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} width={56} />
+          <YAxis domain={[yTicks[0], yTicks[yTicks.length - 1]]} ticks={yTicks} interval={0} tickFormatter={(v) => formatMoney(v, ccy, { compact: true, decimals: false })} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} width={56} />
           <Tooltip content={tip} cursor={{ stroke: '#DB0011', strokeOpacity: 0.3 }} />
           <Area type="monotone" dataKey="total" stroke="#DB0011" strokeWidth={2.2} fill={`url(#g${id})`} dot={false} isAnimationActive={false} connectNulls={false} />
           <Line type="monotone" dataKey="forecast" stroke="#DB0011" strokeWidth={2.6} strokeDasharray="1 7" strokeLinecap="round" dot={false} isAnimationActive={false} connectNulls />
