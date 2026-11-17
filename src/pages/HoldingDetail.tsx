@@ -7,8 +7,10 @@ import { formatDate, RANGES, todayISO } from '../domain/dates';
 import { providerById } from '../data/providers';
 import { typeById } from '../data/holdingTypes';
 import { CATEGORIES } from '../data/categories';
-import { AUTOTRADER_VALUATION_URL, STALE_AFTER_DAYS, goldQuote, priceCheckLink, pricingMode } from '../valuation/valuers';
+import { AUTOTRADER_VALUATION_URL, MOVALUE_URL, STALE_AFTER_DAYS, goldQuote, priceCheckLink, pricingMode } from '../valuation/valuers';
 import { metalSpec, spotPerGram } from '../valuation/metals';
+import { areaLookup } from '../valuation/areaPrice';
+import { LONDON_PSM_SOURCE_URL } from '../data/londonPsm';
 import { hpiEstimate, type HpiEstimate } from '../valuation/houseIndex';
 import { AreaTrend } from '../components/Charts';
 import { ChangePill, GrowthStats, Money } from '../components/Money';
@@ -350,12 +352,34 @@ function ValueSource({ h }: { h: Holding }) {
         {link && (
           <span className="price-links">
             <a href={link.url} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> {link.label}</a>
+            {h.type === 'car' && <a href={MOVALUE_URL} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free moValue valuation</a>}
             {h.type === 'car' && <a href={AUTOTRADER_VALUATION_URL} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free Auto Trader valuation</a>}
           </span>
         )}
       </div>
+      {mode === 'index' && <AreaSuggestion h={h} />}
       {mode === 'index' && <HpiSuggestion h={h} />}
     </>
+  );
+}
+
+function AreaSuggestion({ h }: { h: Holding }) {
+  const { addValuation, currency } = useStore();
+  const r = areaLookup(h.details);
+  if (r.kind === 'no-postcode') return null; // HpiSuggestion already asks for the postcode
+  if (r.kind === 'not-london') return <p className="field-hint">Price per square metre covers London for now; {r.district} isn't in it.</p>;
+  if (r.kind === 'no-figure') return <p className="field-hint">Too few recent sales in {r.district} for a reliable price per square metre.</p>;
+  if (r.kind === 'no-area') return <p className="field-hint">Add the floor area in m² (Edit) to get a value from the local price per square metre.</p>;
+  const e = r.est;
+  const v = convert(e.value, 'GBP', h.currency);
+  return (
+    <div className="hpi-card">
+      <div>
+        <b>Area estimate: {formatMoney(convert(e.value, 'GBP', currency), currency, { decimals: false })}</b> — {e.area} ({e.district}) median {formatMoney(convert(e.psm, 'GBP', currency), currency, { decimals: false })} per m² × {e.sqm} m².
+      </div>
+      <span className="muted small">HM Land Registry sold prices matched to EPC floor areas, 12 months to {e.asOf} ({e.sales} sales). A district average, so your own value may differ. <a href={LONDON_PSM_SOURCE_URL} target="_blank" rel="noreferrer">Source</a></span>
+      <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: Math.round(v) })}>Use this estimate</button></div>
+    </div>
   );
 }
 

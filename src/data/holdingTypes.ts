@@ -51,7 +51,7 @@ export const HOLDING_TYPES: HoldingType[] = [
   { id: 'car', category: 'assets', label: 'Car', providerKinds: [], allowsPositions: false, icon: 'car',
     fields: [{ key: 'make', label: 'Make', placeholder: 'Porsche' }, { key: 'model', label: 'Model', placeholder: '911 Carrera' }, { key: 'year', label: 'Year', placeholder: '2008' }, { key: 'registration', label: 'Registration', placeholder: 'Optional' }] },
   { id: 'property', category: 'assets', label: 'Property', providerKinds: [], allowsPositions: false, icon: 'house',
-    fields: [{ key: 'address', label: 'Address', placeholder: 'Street, city' }, { key: 'postcode', label: 'Postcode', placeholder: 'SW5 0JQ' }] },
+    fields: [{ key: 'address', label: 'Address', placeholder: 'Street, city' }, { key: 'postcode', label: 'Postcode', placeholder: 'SW5 0JQ' }, { key: 'sqm', label: 'Floor area (m²)', placeholder: '75', numeric: true }] },
   { id: 'chalet', category: 'assets', label: 'Chalet', providerKinds: [], allowsPositions: false, icon: 'chalet',
     fields: [{ key: 'location', label: 'Location', placeholder: 'Verbier' }] },
   { id: 'castle', category: 'assets', label: 'Castle', providerKinds: [], allowsPositions: false, icon: 'castle',

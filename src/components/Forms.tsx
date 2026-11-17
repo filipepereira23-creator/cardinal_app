@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { CURRENCIES, formatMoney, type CurrencyCode } from '../config/currencies';
+import { CURRENCIES, convert, formatMoney, type CurrencyCode } from '../config/currencies';
 import { typesFor, typeById } from '../data/holdingTypes';
 import { providersFor, providerById, searchProviders, type Provider } from '../data/providers';
 import type { CategoryId } from '../domain/types';
@@ -8,6 +8,7 @@ import { todayISO } from '../domain/dates';
 import { meaningfulBase } from '../domain/calc';
 import { useStore } from '../state/store';
 import { pricingMode } from '../valuation/valuers';
+import { areaLookup } from '../valuation/areaPrice';
 import { metalValue, spotPerGram, metalSpec, METALS } from '../valuation/metals';
 import type { FieldDef } from '../data/holdingTypes';
 import { Modal } from './Modal';
@@ -98,6 +99,23 @@ function ProviderPicker({ providers, value, onChange }: { providers: Provider[];
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Live "area price × floor area" suggestion while adding a property. */
+function AreaEstimateBox({ details, ccy, onUse }: { details: Record<string, string>; ccy: CurrencyCode; onUse: (v: number) => void }) {
+  const r = areaLookup(details);
+  if (r.kind === 'no-postcode') return <p className="field-hint">Add the postcode and floor area and Cardinal will suggest a value from London sold prices per square metre.</p>;
+  if (r.kind === 'not-london') return <p className="field-hint">Area prices cover London postcodes for now, so type in the value yourself for {r.district}.</p>;
+  if (r.kind === 'no-figure') return <p className="field-hint">There aren't enough recent sales in {r.district} for a reliable price per square metre. Type in the value yourself.</p>;
+  if (r.kind === 'no-area') return <p className="field-hint">Add the floor area in m² to get a suggested value (1 m² = 10.76 sq ft).</p>;
+  const e = r.est;
+  const v = Math.round(convert(e.value, 'GBP', ccy));
+  return (
+    <div className="hpi-card">
+      <div><b>Area estimate: {formatMoney(v, ccy, { decimals: false })}</b> — {e.area} ({e.district}) sells for about {formatMoney(convert(e.psm, 'GBP', ccy), ccy, { decimals: false })} per m², × {e.sqm} m².</div>
+      <div><button type="button" className="btn btn-outline btn-sm" onClick={() => onUse(v)}>Use this value</button> <span className="muted small">or type your own below</span></div>
     </div>
   );
 }
@@ -214,6 +232,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
             ))}
           </div>
         )}
+        {typeId === 'property' && <AreaEstimateBox details={allDetails} ccy={ccy} onUse={(v) => setAmount(String(v))} />}
         {pricingMode(typeId) === 'live' && (
           <div className="value-source">
             {spot ? (
@@ -267,7 +286,7 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
           <AcquisitionFields currency={ccy} price={buyPrice} setPrice={setBuyPrice} date={buyDate} setDate={setBuyDate} gift={gift} setGift={setGift} maxDate={date} />
         )}
         {pricingMode(typeId) === 'link' && <p className="field-hint">There's no free live price feed for this, so type in today's value. Once it's added you'll get a link to check the market price and a reminder to update it.</p>}
-        {pricingMode(typeId) === 'index' && <p className="field-hint">Add the postcode and Cardinal can suggest an updated value from the HM Land Registry house price index.</p>}
+        {pricingMode(typeId) === 'index' && <p className="field-hint">You can always type in your own value. Cardinal can also suggest one from London prices per square metre, and track it with the HM Land Registry house price index.</p>}
         {isDebtCat && <p className="field-hint">Debts subtract from your net worth. Only structured details are kept (type, lender, balance, rate) — no account numbers needed.</p>}
         {type.allowsPositions && <p className="field-hint">You can add the individual funds, shares or coins inside it once it's added.</p>}
         {err && <p className="error">{err}</p>}

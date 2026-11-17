@@ -5,6 +5,7 @@ import { Welcome, SignIn, Register } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { HoldingDetail } from './pages/HoldingDetail';
 import { SettingsPage } from './pages/Settings';
+import { PathPage } from './pages/Path';
 import { Confirmation } from './pages/Confirmation';
 import { InfoPage } from './pages/Info';
 import { Header } from './components/Header';
@@ -38,6 +39,7 @@ export default function App() {
 
   let body;
   if (page === 'holding' && arg) body = <HoldingDetail id={arg} />;
+  else if (page === 'path') body = <PathPage />;
   else if (page === 'settings') body = <SettingsPage />;
   else if (page === 'confirmed') body = <Confirmation />;
   else if (infoPage) body = <InfoPage id={arg} />;

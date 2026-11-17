@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CATEGORIES, CATEGORY_COLORS } from '../data/categories';
-import { buildSeries, categoryChange, categoryValue, daysBetween, grossAssets, holdingChange, holdingValue, holdingValueOn, lastUpdated, rangeStart, rawValueOn, totalChange, totalValue } from '../domain/calc';
+import { buildSeries, categoryChange, categoryValue, daysBetween, firstDate, grossAssets, holdingChange, holdingValue, holdingValueOn, lastUpdated, rangeStart, rawValueOn, totalChange, totalValue } from '../domain/calc';
 import { convert, formatMoney } from '../config/currencies';
-import { RANGES, todayISO } from '../domain/dates';
+import { RANGES, formatDate, todayISO } from '../domain/dates';
 import { STALE_AFTER_DAYS, pricingMode } from '../valuation/valuers';
 import type { CategoryId, Holding } from '../domain/types';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
-import { AreaTrend, LINE_COLORS, MultiTrend } from '../components/Charts';
+import { buildForecast, withForecast } from '../domain/forecast';
+import { Allocation } from '../components/Allocation';
+import { MainTabs } from '../components/MainTabs';
+import { AreaTrend, ForecastTrend, LINE_COLORS, MultiTrend } from '../components/Charts';
 import { ChangePill, GrowthStats, Money } from '../components/Money';
 import { RangeTabs } from '../components/RangeTabs';
 import { AddHoldingModal } from '../components/Forms';
@@ -23,6 +26,8 @@ import type { Provider, ProviderKind } from '../data/providers';
 export function Dashboard({ tab }: { tab: CategoryId }) {
   const { holdings, currency, range, user, loadSample, marketVersion } = useStore();
   const [moved, setMoved] = useState(false);
+  const [showForecast, setShowForecast] = useState(false);
+  const [years, setYears] = useState(10);
   const start = rangeStart(range, holdings);
   const total = totalValue(holdings, currency);
   const gross = grossAssets(holdings, currency);
@@ -31,12 +36,15 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
   const ch = totalChange(holdings, currency, start);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const series = useMemo(() => buildSeries(start, { total: (d) => totalValue(holdings, currency, d) }), [holdings, currency, start, marketVersion]);
+  const forecast = useMemo(() => (showForecast ? buildForecast(holdings, currency, years) : null), [showForecast, holdings, currency, years, marketVersion]);
+  const forecastSeries = useMemo(() => (forecast ? withForecast(series, forecast) : series), [forecast, series]);
   const rangeDesc = RANGES.find((r) => r.id === range)!.desc;
   const rangeLabel = RANGES.find((r) => r.id === range)!.label;
   const empty = holdings.length === 0;
 
   return (
     <div className="page">
+      <MainTabs active="wealth" />
       <section className="card hero">
         <div className="hero-top">
           <div>
@@ -65,11 +73,32 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
           </div>
         ) : (
           <>
-            <AreaTrend series={series} ccy={currency} height={240} />
+            {showForecast && forecast ? <ForecastTrend series={forecastSeries} ccy={currency} height={260} /> : <AreaTrend series={series} ccy={currency} height={240} />}
+            <div className="forecast-bar">
+              <label className="check-row">
+                <input type="checkbox" checked={showForecast} onChange={(e) => setShowForecast(e.target.checked)} />
+                <span>Show forecast*</span>
+              </label>
+              {showForecast && (
+                <div className="seg" role="tablist" aria-label="Forecast length">
+                  {[5, 10, 20, 30].map((y) => <button key={y} className={years === y ? 'on' : ''} onClick={() => setYears(y)}>{y}y</button>)}
+                </div>
+              )}
+            </div>
+            {showForecast && (
+              forecast ? (
+                <div className="forecast-note">
+                  <div>If your trend continues, you could have <b>{formatMoney(forecast.endValue, currency, { decimals: false })}</b> in {forecast.years} years<b>*</b></div>
+                  <span className="muted small">*Projected from your average past performance ({forecast.method === 'compound' ? `${forecast.rate.toFixed(1)}% a year since ${formatDate(firstDate(holdings)!, 'long')}` : `about ${formatMoney(forecast.rate, currency, { decimals: false })} a year`}), shown as the dotted line. Based on past performance, which does not guarantee future performance. Includes money you add, not only returns.</span>
+                </div>
+              ) : <p className="muted small">Not enough history yet to project a trend. Add a few weeks of balances first.</p>
+            )}
             <GrowthStats change={ch} periodLabel={rangeLabel} note="Net worth growth includes money you add or withdraw, not only investment returns." />
           </>
         )}
       </section>
+
+      <Allocation />
 
       <nav className="cat-tabs" aria-label="Categories">
         {CATEGORIES.map((c) => {

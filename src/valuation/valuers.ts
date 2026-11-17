@@ -83,6 +83,8 @@ export function priceCheckLink(h: Pick<Holding, 'type' | 'details' | 'name'>): {
 
 /** Auto Trader's free consumer valuation page (needs the registration typed in on their site). */
 export const AUTOTRADER_VALUATION_URL = 'https://www.autotrader.co.uk/cars/valuation';
+/** moValue: a free UK valuation by registration plate, no account needed (website only, no API). */
+export const MOVALUE_URL = 'https://movalue.co.uk/';
 
 /** Days after which a manually valued asset gets a gentle "worth a check" reminder. */
 export const STALE_AFTER_DAYS = 90;

@@ -1,8 +1,8 @@
 import { useId, useMemo, useState } from 'react';
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ComposedChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatMoney, type CurrencyCode } from '../config/currencies';
 import type { SeriesPoint } from '../domain/calc';
-import { formatDate, parseISO } from '../domain/dates';
+import { formatDate, parseISO, todayISO } from '../domain/dates';
 import { useStore } from '../state/store';
 
 function useChartTheme() {
@@ -100,6 +100,49 @@ export function MultiTrend({ series, lines, ccy, height = 260 }: { series: Serie
           </label>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Net worth history (solid area) with a dotted forecast line continuing from today. */
+export function ForecastTrend({ series, ccy, height = 260 }: { series: SeriesPoint[]; ccy: CurrencyCode; height?: number }) {
+  const id = useId().replace(/:/g, '');
+  const t = useChartTheme();
+  const today = todayISO();
+  const vals = series.flatMap((p) => [p.total, p.forecast].filter((v) => typeof v === 'number') as number[]);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const pad = (max - min) * 0.08 || 1;
+  const tip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const future = label > today;
+    const p = payload.find((x: any) => x.value !== undefined && x.value !== null);
+    if (!p) return null;
+    return (
+      <div className="chart-tip">
+        <div className="chart-tip-date">{formatDate(label, 'long')}</div>
+        <div className="chart-tip-row"><b>{formatMoney(p.value, ccy)}</b>{future && <span className="muted"> forecast*</span>}</div>
+      </div>
+    );
+  };
+  return (
+    <div className="chart" style={{ height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={series} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id={`g${id}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#DB0011" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="#DB0011" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid vertical={false} stroke={t.grid} />
+          <XAxis dataKey="date" tickFormatter={(d: string) => formatDate(d, 'month')} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} minTickGap={36} />
+          <YAxis domain={[Math.max(0, min - pad), max + pad]} tickFormatter={(v) => formatMoney(v, ccy, { compact: true, decimals: false })} tick={{ fontSize: 11, fill: t.tick }} axisLine={false} tickLine={false} width={56} />
+          <Tooltip content={tip} cursor={{ stroke: '#DB0011', strokeOpacity: 0.3 }} />
+          <Area type="monotone" dataKey="total" stroke="#DB0011" strokeWidth={2.2} fill={`url(#g${id})`} dot={false} isAnimationActive={false} connectNulls={false} />
+          <Line type="monotone" dataKey="forecast" stroke="#DB0011" strokeWidth={2.6} strokeDasharray="1 7" strokeLinecap="round" dot={false} isAnimationActive={false} connectNulls />
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }
