@@ -95,6 +95,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [portfolio, setPortfolio] = useState<Portfolio>({ holdings: [], displayCurrency: 'GBP' });
   const [range, setRange] = useState<RangeId>('1M');
   const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS, theme: storedTheme() });
+  // Apply display prefs during render, so children rendered in this pass already see them (an effect would be one render late).
+  setMoneyPrefs({ locale: 'en-GB', hide: settings.hideBalances, decimals: settings.showDecimals });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => applyTheme(storedTheme()));
   const [confirmationEmailSent, setConfirmationEmailSent] = useState<boolean | null>(null);
   const loadedFor = useRef<string | null>(null);
