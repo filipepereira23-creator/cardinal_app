@@ -34,7 +34,7 @@ export function ProviderList({ kinds, onPick, onManual, compact = false }: { kin
             </button>
           </li>
         ))}
-        {!list.length && <li className="muted pad">No provider matches “{q}”. You can still add it manually.</li>}
+        {!list.length && <li className="muted pad">No provider matches “{q}”. You can still add it manually</li>}
         <li>
           <button className="plist-row plist-manual" onClick={onManual}>
             <span className="add-circle"><Icon name="plus" size={20} /></span>

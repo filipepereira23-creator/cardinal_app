@@ -8,10 +8,4 @@ export const CATEGORIES: { id: CategoryId; label: string; singular: string; blur
   { id: 'debts', label: 'Debts', singular: 'debt', blurb: 'Mortgages, loans, car finance, credit cards and student loans' },
 ];
 
-export const CATEGORY_COLORS: Record<CategoryId, string> = {
-  cash: '#DB0011',
-  investment: '#1D1D1F',
-  crypto: '#F0807F',
-  assets: '#8E0A12',
-  debts: '#B9B9BF',
-};
+/** Category colours live in config/palette.ts (they change with light and dark mode). */

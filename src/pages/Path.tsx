@@ -1,20 +1,21 @@
 import { useState } from 'react';
-import { convert, formatMoney, symbolFor, type CurrencyCode } from '../config/currencies';
+import { formatMoney, symbolFor, type CurrencyCode } from '../config/currencies';
 import { totalValue } from '../domain/calc';
 import { useStore } from '../state/store';
 import { MainTabs } from '../components/MainTabs';
 
-/** Net worth milestones in pounds. Reaching one unlocks the next level. Partner rewards are added later. */
+/**
+ * Net worth milestones. The same round numbers in every currency (Filipe, 18 Nov 2026): $10k in dollars,
+ * £10k in pounds, never converted. Progress is measured in the currency you pick, so you may be further
+ * along in one currency than another; partner rewards will follow the currency too.
+ */
 export const MILESTONES = [1_000, 10_000, 20_000, 50_000, 100_000, 200_000, 500_000, 1_000_000, 5_000_000, 10_000_000, 100_000_000, 1_000_000_000];
 
-/** Milestones are set in pounds and shown in the display currency, rounded to a tidy short figure. */
 const short = (v: number) => {
   const dp = (x: number) => +x.toPrecision(3);
   return v >= 1e9 ? `${dp(v / 1e9)}b` : v >= 1e6 ? `${dp(v / 1e6)}m` : v >= 1e3 ? `${dp(v / 1e3)}k` : `${Math.round(v)}`;
 };
 const makeLabel = (ccy: CurrencyCode) => (n: number) => `${symbolFor(ccy).trim()}${short(n)}`;
-/** Two significant figures, so a level reads $1.3k rather than $1,319.84. */
-const nice = (v: number) => { if (v <= 0) return 0; const m = 10 ** (Math.floor(Math.log10(v)) - 1); return Math.round(v / m) * m; };
 const STEP = 118;
 const W = 360;
 const xs = (i: number) => (i % 2 === 0 ? 105 : 255) + (i % 4 === 1 ? 10 : i % 4 === 3 ? -10 : 0);
@@ -22,7 +23,7 @@ const xs = (i: number) => (i % 2 === 0 ? 105 : 255) + (i % 4 === 1 ? 10 : i % 4 
 export function PathPage() {
   const { holdings, currency } = useStore();
   const label = makeLabel(currency);
-  const ms = MILESTONES.map((m) => nice(convert(m, 'GBP', currency)));
+  const ms = MILESTONES;
   const total = totalValue(holdings, currency);
   const gbp = total;
   const reached = ms.filter((m) => gbp >= m).length;
@@ -55,14 +56,14 @@ export function PathPage() {
       <section className="card path-hero">
         <div className="eyebrow">Your Net Worth Path</div>
         <div className="path-level">Level {reached}<span className="muted"> of {ms.length}</span></div>
-        <div className="path-sub">You're at <b>{formatMoney(total, currency, { decimals: false })}</b>{next ? <>, <b>{formatMoney(next - gbp, currency, { decimals: false })}</b> to unlock level {reached + 1} ({label(next)}).</> : <>, every level unlocked. Legend.</>}</div>
+        <div className="path-sub">You're at <b>{formatMoney(total, currency, { decimals: false })}</b>{next ? <>, <b>{formatMoney(next - gbp, currency, { decimals: false })}</b> to unlock level {reached + 1} ({label(next)})</> : <>, every level unlocked. Legend</>}</div>
         {next && (
           <div className="path-bar" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
             <i style={{ width: `${pct}%` }} />
             <span>{prev ? label(prev) : `${symbolFor(currency).trim()}0`}</span><span>{label(next)}</span>
           </div>
         )}
-        <p className="muted small">Linked to your total net worth. Each level unlocks rewards from official partners, coming soon.</p>
+        <p className="muted small">Linked to your total net worth. Each level unlocks rewards from official partners, coming soon</p>
       </section>
 
       <section className="card path-card">
@@ -90,7 +91,7 @@ export function PathPage() {
       <section className="card path-info">
         <div className="eyebrow">Level {info + 1} · {label(ms[info])}</div>
         <p><b>{gbp >= ms[info] ? 'Unlocked' : 'Locked'}</b>: reach {formatMoney(ms[info], currency, { decimals: false })} of net worth{gbp < ms[info] ? <>, {formatMoney(ms[info] - gbp, currency, { decimals: false })} to go</> : null}.</p>
-        <p className="muted small">Reward from our official partners: coming soon.</p>
+        <p className="muted small">Reward from our official partners: coming soon</p>
       </section>
     </div>
   );

@@ -25,9 +25,9 @@ interface Group { id: string; name: string; members: string[]; }
 interface ConnState { optIn: boolean; friends: Friend[]; groups: Group[]; }
 
 const PERIODS: { id: Period; label: string; days: number; report: string }[] = [
-  { id: 'week', label: 'Week', days: 7, report: 'End of week' },
-  { id: 'month', label: 'Month', days: 30, report: 'End of month' },
-  { id: 'year', label: 'Year', days: 365, report: 'End of year' },
+  { id: 'week', label: 'Week', days: 7, report: 'End Of Week' },
+  { id: 'month', label: 'Month', days: 30, report: 'End Of Month' },
+  { id: 'year', label: 'Year', days: 365, report: 'End Of Year' },
 ];
 const IDX: Record<Period, number> = { week: 0, month: 1, year: 2 };
 
@@ -122,12 +122,12 @@ export function ConnectionsPage() {
 
       <section className="card conn-hero">
         <div className="eyebrow">Your Flock</div>
-        <h2 className="conn-title">Grow together, privately</h2>
-        <p className="muted">Add friends, make groups and see who is growing fastest. Cardinal only ever shares percentages. Nobody ever sees how much anyone has or made.</p>
+        <h2 className="conn-title">Grow Together, Privately</h2>
+        <p className="muted">Add friends, make groups and see who is growing fastest. Cardinal only ever shares percentages. Nobody ever sees how much anyone has or made</p>
         <label className="toggle-row conn-optin">
           <span className="toggle-text">
-            <span><b>Take part in rankings</b></span>
-            <span className="muted small">{st.optIn ? 'Your % growth shows in your groups. Your amounts never do.' : 'You are hidden from rankings. You still get the end of week, month and year reports.'}</span>
+            <span><b>Take Part In Rankings</b></span>
+            <span className="muted small">{st.optIn ? 'Your % growth shows in your groups. Your amounts never do' : 'You are hidden from rankings. You still get the end of week, month and year reports'}</span>
           </span>
           <input type="checkbox" role="switch" className="switch" checked={st.optIn} onChange={(e) => setSt((s) => ({ ...s, optIn: e.target.checked }))} />
         </label>
@@ -147,7 +147,7 @@ export function ConnectionsPage() {
         )}
         {st.friends.length === 0 ? (
           <div className="conn-empty">
-            <p className="muted">No friends yet. Invite people you trust, or load example friends to see how rankings look.</p>
+            <p className="muted">No friends yet. Invite people you trust, or load example friends to see how rankings look</p>
             <button className="btn btn-ghost btn-sm" onClick={loadExamples}><Icon name="sparkle" size={14} /> Show example friends</button>
           </div>
         ) : (
@@ -198,11 +198,11 @@ export function ConnectionsPage() {
             </div>
           </div>
           <div className="seg conn-by" role="radiogroup" aria-label="Rank by">
-            <button type="button" role="radio" aria-checked={rankBy === 'pct'} className={rankBy === 'pct' ? 'on' : ''} onClick={() => setRankBy('pct')}>% growth</button>
-            <button type="button" role="radio" aria-checked={rankBy === 'money'} className={rankBy === 'money' ? 'on' : ''} onClick={() => setRankBy('money')}>Money made</button>
+            <button type="button" role="radio" aria-checked={rankBy === 'pct'} className={rankBy === 'pct' ? 'on' : ''} onClick={() => setRankBy('pct')}>% Growth</button>
+            <button type="button" role="radio" aria-checked={rankBy === 'money'} className={rankBy === 'money' ? 'on' : ''} onClick={() => setRankBy('money')}>Money Made</button>
           </div>
           {ranking.length <= 1 ? (
-            <p className="muted">Rankings appear once friends join. {pending.length > 0 ? 'Your invites go out when accounts sync across devices.' : 'Add a friend or load the examples above.'}</p>
+            <p className="muted">Rankings appear once friends join. {pending.length > 0 ? 'Your invites go out when accounts sync across devices' : 'Add a friend or load the examples above'}</p>
           ) : (
             <ol className="rank">
               {ranking.map((r, i) => (
@@ -217,13 +217,13 @@ export function ConnectionsPage() {
               ))}
             </ol>
           )}
-          <p className="muted small">{rankBy === 'pct' ? 'Ranked by % growth over the period.' : 'Ranked by money made over the period. The order shows, the amounts never do.'}</p>
+          <p className="muted small">{rankBy === 'pct' ? 'Ranked by % growth over the period' : 'Ranked by money made over the period. The order shows, the amounts never do'}</p>
         </section>
       ) : null}
 
       <section className="card">
         <div className="eyebrow">Reports</div>
-        <p className="muted small">{st.optIn ? 'Everyone gets these.' : 'You are out of rankings, so this is your view.'} Sent at the end of each week, month and year once the server is in. Percentages only.</p>
+        <p className="muted small">{st.optIn ? 'Everyone gets these' : 'You are out of rankings, so this is your view'} Sent at the end of each week, month and year once the server is in. Percentages only</p>
         <div className="report-grid">
           {PERIODS.map((p) => {
             const top = board(p.id, st.optIn, 'pct');

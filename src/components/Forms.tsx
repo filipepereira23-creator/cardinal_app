@@ -1,3 +1,4 @@
+import { titleCase } from '../domain/titleCase';
 import { useMemo, useState, type ReactNode } from 'react';
 import { CURRENCIES, convert, formatMoney, type CurrencyCode } from '../config/currencies';
 import { typesFor, typeById } from '../data/holdingTypes';
@@ -19,7 +20,7 @@ import { Icon } from './Icon';
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="field">
-      <span className="field-label">{label}</span>
+      <span className="field-label">{titleCase(label)}</span>
       {children}
       {hint && <span className="field-hint">{hint}</span>}
     </label>
@@ -96,7 +97,7 @@ function ProviderPicker({ providers, value, onChange }: { providers: Provider[];
                 <ProviderMark provider={p} size={24} /> {p.name}
               </button>
             ))}
-            {!list.length && <div className="muted pad">No match. Leave it blank and use the name field.</div>}
+            {!list.length && <div className="muted pad">No match. Leave it blank and use the name field</div>}
           </div>
         </div>
       )}
@@ -107,10 +108,10 @@ function ProviderPicker({ providers, value, onChange }: { providers: Provider[];
 /** Live "area price × floor area" suggestion while adding a property. */
 function AreaEstimateBox({ details, ccy, onUse }: { details: Record<string, string>; ccy: CurrencyCode; onUse: (v: number) => void }) {
   const r = areaLookup(details);
-  if (r.kind === 'no-postcode') return <p className="field-hint">Add the postcode and floor area and Cardinal will suggest a value from London sold prices per square metre.</p>;
+  if (r.kind === 'no-postcode') return <p className="field-hint">Add the postcode and floor area and Cardinal will suggest a value from London sold prices per square metre</p>;
   if (r.kind === 'not-london') return <p className="field-hint">Area prices cover London postcodes for now, so type in the value yourself for {r.district}.</p>;
-  if (r.kind === 'no-figure') return <p className="field-hint">There aren't enough recent sales in {r.district} for a reliable price per square metre. Type in the value yourself.</p>;
-  if (r.kind === 'no-area') return <p className="field-hint">Add the floor area in m² to get a suggested value (1 m² = 10.76 sq ft).</p>;
+  if (r.kind === 'no-figure') return <p className="field-hint">There aren't enough recent sales in {r.district} for a reliable price per square metre. Type in the value yourself</p>;
+  if (r.kind === 'no-area') return <p className="field-hint">Add the floor area in m² to get a suggested value (1 m² = 10.76 sq ft)</p>;
   const e = r.est;
   const v = Math.round(convert(e.value, 'GBP', ccy));
   return (
@@ -170,15 +171,15 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const v = useLive ? liveValue! : parseAmount(amount);
-    if (!useLive && (!amount || Number.isNaN(v))) return setErr(isDebtCat ? 'Enter the outstanding balance.' : 'Enter the current value.');
-    if (isDebtCat && v < 0) return setErr('Enter the balance you owe as a positive number.');
+    if (!useLive && (!amount || Number.isNaN(v))) return setErr(isDebtCat ? 'Enter the outstanding balance' : 'Enter the current value');
+    if (isDebtCat && v < 0) return setErr('Enter the balance you owe as a positive number');
     const r = rate.trim() ? parseAmount(rate) : undefined;
     const m = monthly.trim() ? parseAmount(monthly) : undefined;
-    if (r !== undefined && (Number.isNaN(r) || r < 0 || r > 100)) return setErr('Interest rate should be a % between 0 and 100, or leave it blank.');
-    if (m !== undefined && (Number.isNaN(m) || m < 0)) return setErr('Monthly payment should be a number, or leave it blank.');
+    if (r !== undefined && (Number.isNaN(r) || r < 0 || r > 100)) return setErr('Interest rate should be a % between 0 and 100, or leave it blank');
+    if (m !== undefined && (Number.isNaN(m) || m < 0)) return setErr('Monthly payment should be a number, or leave it blank');
     const valuations = [{ date: useLive ? todayISO() : date, value: v }];
     const bp = buyPrice.trim() ? parseAmount(buyPrice) : undefined;
-    if (bp !== undefined && (Number.isNaN(bp) || bp < 0)) return setErr('Purchase price should be a number, or leave it blank.');
+    if (bp !== undefined && (Number.isNaN(bp) || bp < 0)) return setErr('Purchase price should be a number, or leave it blank');
     // Only draw history from the purchase price if it's a real price. A £0 or £1 gift would make the chart and % meaningless.
     if (!gift && bp !== undefined && bp >= 100 && meaningfulBase(bp, v) && buyDate && buyDate < date) valuations.unshift({ date: buyDate, value: bp });
     const acquisition = category === 'assets' && (gift || bp !== undefined || buyDate) ? { price: gift ? undefined : bp, date: buyDate || undefined, gift: gift || undefined } : undefined;
@@ -245,15 +246,15 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
                 {liveValue !== null ? (
                   <span><span className="live-dot" />Worth <b>{formatMoney(liveValue, ccy)}</b> today · spot {formatMoney(spotPerGram(metalSpec({ details: allDetails })!.metal, spot, ccy) ?? 0, ccy)}/g</span>
                 ) : (
-                  <span className="muted">Enter a weight to value it live.</span>
+                  <span className="muted">Enter a weight to value it live</span>
                 )}
               </>
             ) : (
-              <span className="muted">The live spot price isn't available right now, so type in today's value.</span>
+              <span className="muted">The live spot price isn't available right now, so type in today's value</span>
             )}
           </div>
         )}
-        <Field label="Name" hint="Leave blank and we'll name it for you.">
+        <Field label="Name" hint="Leave blank and we'll name it for you">
           <input className="input" placeholder={autoName()} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <div className="grid-2">
@@ -286,10 +287,10 @@ export function AddHoldingModal({ category, providerId, onClose, onAdded }: { ca
         {category === 'assets' && (
           <AcquisitionFields currency={ccy} price={buyPrice} setPrice={setBuyPrice} date={buyDate} setDate={setBuyDate} gift={gift} setGift={setGift} maxDate={date} />
         )}
-        {pricingMode(typeId) === 'estimate' && <p className="field-hint">There's no free live price feed for this, so type in today's value. Once it's added, Cardinal suggests a free automatic estimate ({typeId === 'car' ? 'from the year and mileage' : 'from the brand\'s market trend'}).</p>}
-        {pricingMode(typeId) === 'index' && <p className="field-hint">You can always type in your own value. Cardinal can also suggest one from London prices per square metre, and track it with the HM Land Registry house price index.</p>}
-        {isDebtCat && <p className="field-hint">Debts subtract from your net worth. Only structured details are kept (type, lender, balance, rate): no account numbers needed.</p>}
-        {type.allowsPositions && <p className="field-hint">You can add the individual funds, shares or coins inside it once it's added.</p>}
+        {pricingMode(typeId) === 'estimate' && <p className="field-hint">Type in today's value. Once it's added, Cardinal suggests a free automatic estimate ({typeId === 'car' ? 'from the year and mileage' : 'from the brand\'s market trend'})</p>}
+        {pricingMode(typeId) === 'index' && <p className="field-hint">You can always type in your own value. Cardinal can also suggest one from local prices per square metre, and track it with the local house price index</p>}
+        {isDebtCat && <p className="field-hint">Debts subtract from your net worth. Only structured details are kept (type, lender, balance, rate): no account numbers needed</p>}
+        {type.allowsPositions && <p className="field-hint">You can add the individual funds, shares or coins inside it once it's added</p>}
         {err && <p className="error">{err}</p>}
         <div className="form-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
@@ -319,7 +320,7 @@ export function AcquisitionFields({ currency, price, setPrice, date, setDate, gi
           <input className="input" type="date" value={date} max={maxDate ?? todayISO()} onChange={(e) => setDate(e.target.value)} />
         </Field>
       </div>
-      <p className="field-hint">Gain since purchase is only shown when there's a real purchase price. Gifts, £0 or token amounts don't count.</p>
+      <p className="field-hint">Gain since purchase is only shown when there's a real purchase price. Gifts, £0 or token amounts don't count</p>
     </fieldset>
   );
 }
@@ -336,7 +337,7 @@ export function UpdateValueModal({ title, currency, current, onSave, onClose }: 
         onSubmit={(e) => {
           e.preventDefault();
           const v = parseAmount(amount);
-          if (!amount || Number.isNaN(v)) return setErr('Enter a value.');
+          if (!amount || Number.isNaN(v)) return setErr('Enter a value');
           onSave(date, v);
           onClose();
         }}
@@ -344,7 +345,7 @@ export function UpdateValueModal({ title, currency, current, onSave, onClose }: 
         <Field label="New value">
           <AmountInput value={amount} onChange={setAmount} currency={currency} autoFocus required />
         </Field>
-        <Field label="As of" hint="Pick an earlier date to fill in past values.">
+        <Field label="As of" hint="Pick an earlier date to fill in past values">
           <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
         </Field>
         {err && <p className="error">{err}</p>}
@@ -370,15 +371,15 @@ export function AddPositionModal({ holdingId, currency, onClose }: { holdingId: 
   const usd = isCrypto ? coinPriceUsd(symbol, crypto) : null;
   const liveValue = usd && quantity && quantity > 0 ? Math.round(convert(usd * quantity, 'USD', currency) * 100) / 100 : null;
   return (
-    <Modal title={isCrypto ? 'Add a coin' : 'Add fund, share or coin'} onClose={onClose}>
+    <Modal title={isCrypto ? 'Add A Coin' : 'Add Fund, Share Or Coin'} onClose={onClose}>
       <form
         className="form"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!name.trim() && !symbol.trim()) return setErr('Give it a name.');
-          if (quantity !== undefined && (Number.isNaN(quantity) || quantity <= 0)) return setErr('Number of coins should be a positive number, or leave it blank.');
+          if (!name.trim() && !symbol.trim()) return setErr('Give it a name');
+          if (quantity !== undefined && (Number.isNaN(quantity) || quantity <= 0)) return setErr('Number of coins should be a positive number, or leave it blank');
           const v = liveValue ?? parseAmount(amount);
-          if (liveValue === null && (!amount || Number.isNaN(v))) return setErr(isCrypto ? 'Enter its current value, or a symbol and number of coins for a live price.' : 'Enter its current value.');
+          if (liveValue === null && (!amount || Number.isNaN(v))) return setErr(isCrypto ? 'Enter its current value, or a symbol and number of coins for a live price' : 'Enter its current value');
           addPosition(holdingId, { name: name.trim() || symbol.trim().toUpperCase(), symbol: symbol.trim().toUpperCase() || undefined, quantity: liveValue !== null ? quantity : undefined, value: v, date: liveValue !== null ? todayISO() : date });
           onClose();
         }}
@@ -403,10 +404,10 @@ export function AddPositionModal({ holdingId, currency, onClose }: { holdingId: 
         {isCrypto && liveValue !== null && (
           <div className="hpi-card">
             <div><span className="live-dot-inline" /> <b>Live value: {formatMoney(liveValue, currency)}</b> ({formatMoney(convert(usd!, 'USD', currency), currency)} per {symbol.trim().toUpperCase()})</div>
-            <span className="muted small">Updates automatically from Coinbase prices every time you open Cardinal.</span>
+            <span className="muted small">Updates automatically every time you open Cardinal</span>
           </div>
         )}
-        {isCrypto && symbol.trim() && quantity && !usd && <p className="field-hint">No live price found for {symbol.trim().toUpperCase()}. Type its value instead.</p>}
+        {isCrypto && symbol.trim() && quantity && !usd && <p className="field-hint">No live price found for {symbol.trim().toUpperCase()}. Type its value instead</p>}
         {liveValue === null && (
           <div className="grid-2">
             <Field label="Current value">

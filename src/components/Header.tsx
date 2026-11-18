@@ -40,7 +40,7 @@ export function Header() {
                   <button onClick={() => { setOpen(false); go('settings'); }}><Icon name="gear" size={16} /> Settings</button>
                   <button onClick={() => { loadSample(); setOpen(false); go('dashboard'); }}><Icon name="sparkle" size={16} /> Add sample data</button>
                   {holdings.length > 0 && (
-                    <button onClick={() => { if (confirm('Remove every account and asset from Cardinal? This can\'t be undone.')) clearAll(); setOpen(false); }}>
+                    <button onClick={() => { if (confirm('Remove every account and asset from Cardinal? This can\'t be undone')) clearAll(); setOpen(false); }}>
                       <Icon name="trash" size={16} /> Clear all data
                     </button>
                   )}

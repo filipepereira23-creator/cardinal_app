@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react';
 import { Area, AreaChart, Cell, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { CATEGORIES, CATEGORY_COLORS } from '../data/categories';
+import { CATEGORIES } from '../data/categories';
+import { categoryColors, seriesColors, type ThemeName } from '../config/palette';
 import { buildSeries, categoryValue, daysBetween, firstDate, holdingValue } from '../domain/calc';
 import { addDays, formatDate, todayISO } from '../domain/dates';
 import { ASSET_CATEGORIES, type Holding } from '../domain/types';
 import { formatMoney } from '../config/currencies';
 import { useStore } from '../state/store';
-import { LINE_COLORS } from './Charts';
 
 type Slice = { key: string; name: string; value: number; color: string };
 
 const parts = ASSET_CATEGORIES.map((id) => CATEGORIES.find((c) => c.id === id)!);
 
-function slicesOn(holdings: Holding[], by: 'category' | 'account', ccy: Parameters<typeof formatMoney>[1], date: string): Slice[] {
+function slicesOn(holdings: Holding[], by: 'category' | 'account', ccy: Parameters<typeof formatMoney>[1], date: string, theme: ThemeName): Slice[] {
+  const CATEGORY_COLORS = categoryColors(theme);
+  const LINE_COLORS = seriesColors(theme);
   if (by === 'category') {
     return parts.map((c) => ({ key: c.id, name: c.label, value: Math.max(0, categoryValue(holdings, c.id, ccy, date)), color: CATEGORY_COLORS[c.id] }));
   }
@@ -31,14 +33,14 @@ export function Allocation() {
   const date = addDays(today, -Math.min(back, span));
 
   const slices = useMemo(() => {
-    const all = slicesOn(holdings, by, currency, date).filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
+    const all = slicesOn(holdings, by, currency, date, theme).filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
     if (by === 'account' && all.length > 7) {
       const rest = all.slice(7).reduce((s, x) => s + x.value, 0);
-      return [...all.slice(0, 7), { key: 'other', name: 'Everything else', value: rest, color: '#9A9AA0' }];
+      return [...all.slice(0, 7), { key: 'other', name: 'Everything else', value: rest, color: theme === 'dark' ? '#5E5E66' : '#C9C9CE' }];
     }
     return all;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holdings, by, currency, date, marketVersion]);
+  }, [holdings, by, currency, date, marketVersion, theme]);
   const total = slices.reduce((s, x) => s + x.value, 0);
 
   // Stacked 100% history by category (always categories: readable at a glance).
@@ -59,8 +61,8 @@ export function Allocation() {
           <div className="alloc-date">{back === 0 ? 'Today' : formatDate(date, 'long')}</div>
         </div>
         <div className="seg" role="tablist">
-          <button className={by === 'category' ? 'on' : ''} onClick={() => setBy('category')}>By type</button>
-          <button className={by === 'account' ? 'on' : ''} onClick={() => setBy('account')}>By account</button>
+          <button className={by === 'category' ? 'on' : ''} onClick={() => setBy('category')}>By Type</button>
+          <button className={by === 'account' ? 'on' : ''} onClick={() => setBy('account')}>By Account</button>
         </div>
       </div>
       <div className="alloc-body">
@@ -98,12 +100,12 @@ export function Allocation() {
               <AreaChart data={history} stackOffset="expand" margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                 <XAxis dataKey="date" tickFormatter={(d: string) => formatDate(d, 'month')} tick={{ fontSize: 10, fill: grid }} axisLine={false} tickLine={false} minTickGap={40} />
                 <YAxis hide />
-                {parts.map((c) => <Area key={c.id} type="monotone" dataKey={c.id} stackId="1" stroke="none" fill={CATEGORY_COLORS[c.id]} isAnimationActive={false} />)}
+                {parts.map((c) => <Area key={c.id} type="monotone" dataKey={c.id} stackId="1" stroke="none" fill={categoryColors(theme)[c.id]} isAnimationActive={false} />)}
                 <ReferenceLine x={history.reduce((best, p) => (Math.abs(daysBetween(p.date, date)) < Math.abs(daysBetween(best, date)) ? p.date : best), history[0].date)} stroke="#fff" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <p className="muted small">Drag the slider to see your split on any past day. The strip shows how the mix changed over time.</p>
+          <p className="muted small">Drag the slider to see your split on any past day. The strip shows how the mix changed over time</p>
         </div>
       )}
     </section>

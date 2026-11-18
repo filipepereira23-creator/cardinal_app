@@ -385,7 +385,7 @@ main { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
 .confirm-details dd { margin: 0; font-weight: 600; word-break: break-all; }
 .confirm-card .notice { text-align: left; width: 100%; }
 .info-card { max-width: 720px; }
-.info-card h1 { font-size: 24px; margin-bottom: 8px; }
+.info-card h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
 
 /* ── Footer (layout follows Filipe's reference: account link, collapsible groups, Connect, ©) ── */
 .site-footer { background: var(--footer-bg); color: var(--footer-ink); margin-top: 40px; padding-bottom: env(safe-area-inset-bottom); width: 100%; }
@@ -590,9 +590,12 @@ main { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
 .eyebrow-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .streak { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--red); background: var(--red-tint); padding: 3px 9px 3px 7px; border-radius: 999px; }
 html[data-theme='dark'] .streak { color: #FFD43B; background: rgba(255, 212, 59, 0.12); }
+/* Info and legal pages: one font, one colour, one size for text; titles only differ by weight and size. */
+.info-card, .info-card * { font-family: inherit; color: var(--ink); letter-spacing: 0; }
+.info-card p { margin: 0 0 8px; line-height: 1.55; font-size: 15px; font-weight: 400; }
+.info-card .info-date { margin-bottom: 12px; }
 .info-sec { margin-top: 20px; }
-.info-sec h2 { font-size: 16px; margin: 0 0 6px; }
-.info-sec p { margin: 0 0 8px; line-height: 1.55; color: var(--ink-2); font-size: 14.5px; }
+.info-sec h2 { font-size: 17px; font-weight: 700; margin: 0 0 6px; }
 
 /* ── Connections ── */
 .main-tabs { overflow-x: auto; scrollbar-width: none; }
@@ -625,3 +628,6 @@ html[data-theme='dark'] .streak { color: #FFD43B; background: rgba(255, 212, 59,
 .report-line { display: grid; grid-template-columns: 82px 1fr auto; gap: 6px; align-items: center; font-size: 14px; }
 .rank-val.pos, .report .pos { color: var(--green); }
 .rank-val.neg { color: var(--red); }
+
+/* Title Case on buttons (Filipe, 18 Nov 2026: every word starts with a capital). */
+.btn, .seg button, .chip { text-transform: capitalize; }

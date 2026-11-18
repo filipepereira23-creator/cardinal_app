@@ -56,7 +56,7 @@ export function ConnectFlow({ kinds, initial, onClose, onManual, title }: { kind
               <span className="consent-dots"><i /><i /><i /></span>
               <ProviderMark provider={prov} size={56} />
             </div>
-            <h2 className="sheet-title center">Connect your {prov.name} account</h2>
+            <h2 className="sheet-title center">Connect Your {prov.name} Account</h2>
             <p className="muted center">Cardinal is asking {prov.name} for <b>read-only</b> access to:</p>
             <ul className="scopes">
               {scopes.map((s) => (
@@ -67,9 +67,9 @@ export function ConnectFlow({ kinds, initial, onClose, onManual, title }: { kind
               ))}
             </ul>
             <ul className="consent-facts">
-              <li><Icon name="lock" size={18} /> Cardinal can never move money or make payments.</li>
-              <li><Icon name="eye" size={18} /> Access lasts {CONSENT_DAYS} days, then we ask you to reconfirm.</li>
-              <li><Icon name="close" size={18} /> You can withdraw access at any time.</li>
+              <li><Icon name="lock" size={18} /> Cardinal can never move money or make payments</li>
+              <li><Icon name="eye" size={18} /> Access lasts {CONSENT_DAYS} days, then we ask you to reconfirm</li>
+              <li><Icon name="close" size={18} /> You can withdraw access at any time</li>
             </ul>
             <div className="sheet-actions">
               <button
@@ -84,7 +84,7 @@ export function ConnectFlow({ kinds, initial, onClose, onManual, title }: { kind
               >
                 Continue
               </button>
-              <p className="muted small center">You'll be taken to {prov.name} to log in securely. Cardinal never sees your login details.</p>
+              <p className="muted small center">You'll be taken to {prov.name} to log in securely. Cardinal never sees your login details</p>
             </div>
           </div>
         )}
@@ -92,7 +92,7 @@ export function ConnectFlow({ kinds, initial, onClose, onManual, title }: { kind
         {step === 'soon' && prov && (
           <div className="sheet-body consent">
             <ProviderMark provider={prov} size={64} />
-            <h2 className="sheet-title center">Live connection coming soon</h2>
+            <h2 className="sheet-title center">Live Connection Coming Soon</h2>
             <p className="muted center">
               We haven't connected to {prov.name} yet, so nothing was shared and no login was asked for.
               Add your balance by hand for now and Cardinal will keep track of it.

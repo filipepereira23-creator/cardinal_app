@@ -10,7 +10,7 @@ function useChartTheme() {
   return theme === 'dark' ? { grid: '#2a2a2f', tick: '#8f8f96', dotRing: '#17171a' } : { grid: '#F0F0F0', tick: '#8A8A8E', dotRing: '#fff' };
 }
 
-export const LINE_COLORS = ['#DB0011', '#1D1D1F', '#F0807F', '#8E0A12', '#8A8A8E', '#E9B3B6', '#4A4A4F', '#B8434B', '#C9C9CE', '#5A0007'];
+/** Chart series colours: see config/palette.ts. */
 
 function tickFormatter(series: SeriesPoint[]) {
   const first = series[0]?.date;

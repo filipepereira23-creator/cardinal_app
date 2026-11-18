@@ -21,7 +21,7 @@ export function Welcome() {
   return (
     <AuthFrame>
       <Bird className="welcome-bird" />
-      <h1 className="welcome-title">Welcome to Cardinal</h1>
+      <h1 className="welcome-title">Welcome To Cardinal</h1>
       <p className="muted center">See everything you own in one number, and watch it move</p>
       <div className="stack">
         <button className="btn btn-primary btn-lg" onClick={() => go('login')}>Log in</button>
@@ -39,7 +39,7 @@ export function SignIn() {
   const [busy, setBusy] = useState(false);
   return (
     <AuthFrame>
-      <h1 className="auth-title">Sign in</h1>
+      <h1 className="auth-title">Sign In</h1>
       <form
         className="form"
         onSubmit={async (e) => {
@@ -91,13 +91,13 @@ export function Register() {
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   return (
     <AuthFrame>
-      <h1 className="auth-title">Create an account</h1>
+      <h1 className="auth-title">Create An Account</h1>
       <form
         className="form"
         onSubmit={async (e) => {
           e.preventDefault();
           setErr('');
-          if (f.password.length < 8) return setErr('Use at least 8 characters for your password.');
+          if (f.password.length < 8) return setErr('Use at least 8 characters for your password');
           setBusy(true);
           try {
             await register(f);

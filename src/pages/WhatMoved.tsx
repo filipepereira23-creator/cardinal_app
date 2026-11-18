@@ -1,4 +1,5 @@
-import { CATEGORIES, CATEGORY_COLORS } from '../data/categories';
+import { CATEGORIES } from '../data/categories';
+import { categoryColors } from '../config/palette';
 import { categoryChange, rangeStart, topMovers, totalChange } from '../domain/calc';
 import { RANGES } from '../domain/dates';
 import { useStore } from '../state/store';
@@ -9,7 +10,8 @@ import { formatMoney } from '../config/currencies';
 
 /** Explains a net worth move: by category, then the individual things that drove it. */
 export function WhatMoved({ onClose }: { onClose: () => void }) {
-  const { holdings, currency, range } = useStore();
+  const { holdings, currency, range, theme } = useStore();
+  const CATEGORY_COLORS = categoryColors(theme);
   const start = rangeStart(range, holdings);
   const total = totalChange(holdings, currency, start);
   const cats = CATEGORIES.map((c) => ({ c, ch: categoryChange(holdings, c.id, currency, start) })).filter((x) => holdings.some((h) => h.category === x.c.id));
@@ -17,12 +19,12 @@ export function WhatMoved({ onClose }: { onClose: () => void }) {
   const movers = topMovers(holdings, currency, start, 8);
   const desc = RANGES.find((r) => r.id === range)!.desc;
   return (
-    <Modal title={`What moved ${desc}`} onClose={onClose}>
+    <Modal title={`What Moved ${desc}`} onClose={onClose}>
       <div className="moved-total">
         <span className="muted">Net worth</span>
         <ChangePill change={total} ccy={currency} />
       </div>
-      <h4 className="section-label">By category</h4>
+      <h4 className="section-label">By Category</h4>
       <ul className="bars">
         {cats.map(({ c, ch }) => (
           <li key={c.id}>
@@ -36,8 +38,8 @@ export function WhatMoved({ onClose }: { onClose: () => void }) {
           </li>
         ))}
       </ul>
-      <h4 className="section-label">Biggest movers</h4>
-      {movers.length === 0 && <p className="muted">Nothing changed in this period.</p>}
+      <h4 className="section-label">Biggest Movers</h4>
+      {movers.length === 0 && <p className="muted">Nothing changed in this period</p>}
       <ul className="rows compact">
         {movers.map((m) => (
           <li key={(m.position?.id ?? '') + m.holding.id}>

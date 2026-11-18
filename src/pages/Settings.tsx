@@ -1,3 +1,4 @@
+import { titleCase } from '../domain/titleCase';
 import { useState, type ReactNode } from 'react';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
@@ -13,7 +14,7 @@ import { Icon } from '../components/Icon';
 function Section({ title, icon, children, note }: { title: string; icon: string; children: ReactNode; note?: string }) {
   return (
     <section className="card settings-section">
-      <h2 className="settings-title"><Icon name={icon} size={18} /> {title}</h2>
+      <h2 className="settings-title"><Icon name={icon} size={18} /> {titleCase(title)}</h2>
       {note && <p className="muted small settings-note">{note}</p>}
       {children}
     </section>
@@ -24,7 +25,7 @@ function Toggle({ label, hint, checked, onChange, disabled }: { label: string; h
   return (
     <label className={`toggle-row ${disabled ? 'disabled' : ''}`}>
       <span className="toggle-text">
-        <span>{label}</span>
+        <span>{titleCase(label)}</span>
         {hint && <span className="muted small">{hint}</span>}
       </span>
       <input type="checkbox" role="switch" className="switch" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
@@ -74,7 +75,7 @@ export function SettingsPage() {
             setMsg(null);
             try {
               await updateProfile(p);
-              setMsg({ ok: true, text: 'Profile saved.' });
+              setMsg({ ok: true, text: 'Profile saved' });
             } catch (x: any) {
               setMsg({ ok: false, text: x.message });
             }
@@ -95,9 +96,9 @@ export function SettingsPage() {
       <Section title="Appearance" icon="moon">
         <Field label="Theme">
           <Segmented<Theme> label="Theme" value={settings.theme} onChange={(theme) => updateSettings({ theme })} options={[{ id: 'auto', label: 'Auto' }, { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'Phone' }]} />
-          <p className="muted small">Auto is dark from 6pm to 7am your local time, and light the rest of the day.</p>
+          <p className="muted small">Auto is dark from 6pm to 7am your local time, and light the rest of the day</p>
         </Field>
-        <p className="field-hint">In dark mode the Cardinal bird turns yellow and the wordmark turns white.</p>
+        <p className="field-hint">In dark mode the Cardinal bird turns yellow and the wordmark turns white</p>
       </Section>
 
       <Section title="Display" icon="chart">
@@ -127,7 +128,7 @@ export function SettingsPage() {
           </button>
         </div>
         <p className="rates-asof">
-          Rates as of <b>{formatDate(fx.asOf, 'long')}</b>, {fx.sourceUrl ? <a href={fx.sourceUrl} target="_blank" rel="noreferrer">{fx.source}</a> : fx.source}
+          Rates as of <b>{formatDate(fx.asOf, 'long')}</b>
           {fx.fetchedAt && <span className="muted small"> · checked {new Date(fx.fetchedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
         </p>
         <table className="rates-table" aria-label={`Exchange rates in ${currency}`}>
@@ -140,8 +141,8 @@ export function SettingsPage() {
             ))}
           </tbody>
         </table>
-        <p className="field-hint">Accounts can be entered in any of these {CURRENCIES.length} currencies and are converted at these rates. Without a connection, the last saved rates (or built-in ones) are used.</p>
-        <h3 className="panel-subtitle">Precious Metals (Spot)</h3>
+        <p className="field-hint">Accounts can be entered in any of these {CURRENCIES.length} currencies and are converted at these rates. Without a connection, the last saved rates (or built-in ones) are used</p>
+        <h3 className="panel-subtitle">Precious Metals</h3>
         {spot ? (
           <table className="rates-table">
             <tbody>
@@ -153,23 +154,19 @@ export function SettingsPage() {
               ))}
             </tbody>
           </table>
-        ) : <p className="muted small">Spot prices aren't available right now.</p>}
-        <p className="field-hint">
-          Live: gold, silver, platinum and palladium from <a href="https://gold-api.com" target="_blank" rel="noreferrer">gold-api.com</a>. Property: an estimate from the HM Land Registry house price index.
-          Watches, cars and property listings have no free public price feed (Chrono24, Auto Trader, Zoopla), so those assets link to the site to check and remind you to update.
-        </p>
+        ) : <p className="muted small">Spot prices aren't available right now</p>}
       </Section>
 
-      <Section title="Notifications" icon="bell" note="Coming soon. These need a server to send email or push messages, so they don't do anything yet.">
+      <Section title="Notifications" icon="bell" note="Coming soon. These need a server to send email or push messages, so they don't do anything yet">
         <Toggle disabled label="Weekly summary email" hint="Your net worth and what moved, every Monday" checked={settings.notifications.weeklySummary} onChange={(v) => notif('weeklySummary', v)} />
         <Toggle disabled label="Big move alerts" hint="When net worth moves more than 5% in a day" checked={settings.notifications.bigMoves} onChange={(v) => notif('bigMoves', v)} />
         <Toggle disabled label="Reminders to update values" hint="Monthly nudge for manually tracked assets" checked={settings.notifications.updateReminders} onChange={(v) => notif('updateReminders', v)} />
       </Section>
 
-      <Section title="Your Data" icon="download" note="Your accounts and values are stored in this browser on this device only.">
+      <Section title="Your Data" icon="download" note="Your accounts and values are stored in this browser on this device only">
         <div className="settings-actions">
           <button className="btn btn-outline" onClick={download}><Icon name="download" size={16} /> Export to Excel</button>
-          <button className="btn btn-ghost" disabled={!holdings.length} onClick={() => confirm("Remove every account and asset from Cardinal? Your login stays. This can't be undone.") && clearAll()}>
+          <button className="btn btn-ghost" disabled={!holdings.length} onClick={() => confirm("Remove every account and asset from Cardinal? Your login stays. This can't be undone") && clearAll()}>
             <Icon name="trash" size={16} /> Delete all data
           </button>
         </div>
@@ -181,7 +178,7 @@ export function SettingsPage() {
           <button
             className="btn btn-danger"
             onClick={async () => {
-              if (!confirm('Delete your Cardinal account and everything in it? This can\'t be undone.')) return;
+              if (!confirm('Delete your Cardinal account and everything in it? This can\'t be undone')) return;
               await deleteAccount();
               go('welcome');
             }}

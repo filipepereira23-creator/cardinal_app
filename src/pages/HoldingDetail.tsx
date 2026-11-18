@@ -1,3 +1,4 @@
+import { titleCase } from '../domain/titleCase';
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
@@ -10,11 +11,10 @@ import { CATEGORIES } from '../data/categories';
 import { STALE_AFTER_DAYS, goldQuote, pricingMode } from '../valuation/valuers';
 import { metalSpec, spotPerGram } from '../valuation/metals';
 import { areaLookup } from '../valuation/areaPrice';
-import { LONDON_PSM_SOURCE_URL } from '../data/londonPsm';
 import { hpiEstimate, type HpiEstimate } from '../valuation/houseIndex';
-import { PPD_ATTRIBUTION, PPD_URL, recentSales, type SalesResult } from '../valuation/streetSales';
-import { CAR_CURVE_SOURCE_URL, carEstimate } from '../valuation/carEstimate';
-import { WATCH_INDEX_AS_OF, WATCH_INDEX_URL, brandTrend, watchEstimate } from '../valuation/watchEstimate';
+import { recentSales, type SalesResult } from '../valuation/streetSales';
+import { carEstimate } from '../valuation/carEstimate';
+import { WATCH_INDEX_AS_OF, brandTrend, watchEstimate } from '../valuation/watchEstimate';
 import { AreaTrend } from '../components/Charts';
 import { ChangePill, GrowthStats, Money } from '../components/Money';
 import { RangeTabs } from '../components/RangeTabs';
@@ -40,7 +40,7 @@ export function HoldingDetail({ id }: { id: string }) {
     return (
       <div className="page">
         <div className="card empty">
-          <p>This item no longer exists.</p>
+          <p>This item no longer exists</p>
           <a className="btn btn-outline" href="#/dashboard">Back to dashboard</a>
         </div>
       </div>
@@ -89,7 +89,7 @@ export function HoldingDetail({ id }: { id: string }) {
         </div>
         <div className="hero-top">
           <div>
-            {isDebt && <div className="eyebrow">Outstanding balance · counts against net worth</div>}
+            {isDebt && <div className="eyebrow">Outstanding Balance · Counts Against Net Worth</div>}
             <div className="hero-figure"><Money value={v} ccy={currency} /></div>
             {h.currency !== currency && <div className="muted small">{formatMoney(native, h.currency)} at today's exchange rate</div>}
             <div className="hero-change">
@@ -166,7 +166,7 @@ export function HoldingDetail({ id }: { id: string }) {
               <dl className="details">
                 {detailEntries.map(([k, val]) => (
                   <div key={k}>
-                    <dt>{k}</dt>
+                    <dt>{titleCase(k)}</dt>
                     <dd>{val}</dd>
                   </div>
                 ))}
@@ -223,7 +223,7 @@ function History({ items, currency, onDelete }: { items: { date: string; value: 
         <li key={x.date}>
           <span>{formatDate(x.date, 'long')}</span>
           <b>{formatMoney(x.value, currency)}</b>
-          <button className="icon-btn sm" aria-label="Delete entry" onClick={() => items.length > 1 ? onDelete(x.date) : alert('Keep at least one value. Remove the item instead.')}>
+          <button className="icon-btn sm" aria-label="Delete entry" onClick={() => items.length > 1 ? onDelete(x.date) : alert('Keep at least one value. Remove the item instead')}>
             <Icon name="close" size={14} />
           </button>
         </li>
@@ -251,11 +251,11 @@ function PurchaseInfo({ h, ccy, onEdit }: { h: Holding; ccy: CurrencyCode; onEdi
       </>
     );
   } else if (a?.gift) {
-    body = <span>Gift or inheritance{when ? `, received ${when}` : ''}. No gain since purchase is shown.</span>;
+    body = <span>Gift or inheritance{when ? `, received ${when}` : ''}. No gain since purchase is shown</span>;
   } else if (a?.price !== undefined) {
-    body = <span>Paid {formatMoney(convert(a.price, h.currency, ccy), ccy)}. Too small to compare against, so no gain since purchase is shown.</span>;
+    body = <span>Paid {formatMoney(convert(a.price, h.currency, ccy), ccy)}. Too small to compare against, so no gain since purchase is shown</span>;
   } else {
-    body = <span className="muted">No purchase price added. That's fine: it's optional.</span>;
+    body = <span className="muted">No purchase price added. That's fine: it's optional</span>;
   }
   return (
     <div className="purchase-info">
@@ -287,14 +287,14 @@ function EditModal({ name, details, fields, acquisition, debt, currency, onSave,
           let acq: Acq | undefined;
           if (acquisition) {
             const p = price.trim() ? Number(price.replace(/[^0-9.\-]/g, '')) : undefined;
-            if (p !== undefined && (Number.isNaN(p) || p < 0)) return setErr('Purchase price should be a number, or leave it blank.');
+            if (p !== undefined && (Number.isNaN(p) || p < 0)) return setErr('Purchase price should be a number, or leave it blank');
             acq = { price: gift ? undefined : p, date: date || undefined, gift: gift || undefined };
           }
           let dt: Debt | undefined;
           if (debt) {
             const r = rate.trim() ? Number(rate.replace(/[^0-9.]/g, '')) : undefined;
             const m = monthly.trim() ? Number(monthly.replace(/[^0-9.]/g, '')) : undefined;
-            if ((r !== undefined && (Number.isNaN(r) || r > 100)) || (m !== undefined && Number.isNaN(m))) return setErr('Rate and monthly payment should be numbers, or leave them blank.');
+            if ((r !== undefined && (Number.isNaN(r) || r > 100)) || (m !== undefined && Number.isNaN(m))) return setErr('Rate and monthly payment should be numbers, or leave them blank');
             dt = { interestRate: r, monthlyPayment: m };
           }
           onSave(n.trim() || name, d, acq, dt);
@@ -365,9 +365,9 @@ function AreaSuggestion({ h }: { h: Holding }) {
   const { addValuation, currency } = useStore();
   const r = areaLookup(h.details);
   if (r.kind === 'no-postcode') return null; // HpiSuggestion already asks for the postcode
-  if (r.kind === 'not-london') return <p className="field-hint">Price per square metre covers London for now; {r.district} isn't in it.</p>;
-  if (r.kind === 'no-figure') return <p className="field-hint">Too few recent sales in {r.district} for a reliable price per square metre.</p>;
-  if (r.kind === 'no-area') return <p className="field-hint">Add the floor area in m² (Edit) to get a value from the local price per square metre.</p>;
+  if (r.kind === 'not-london') return <p className="field-hint">Price per square metre covers London for now; {r.district} isn't in it</p>;
+  if (r.kind === 'no-figure') return <p className="field-hint">Too few recent sales in {r.district} for a reliable price per square metre</p>;
+  if (r.kind === 'no-area') return <p className="field-hint">Add the floor area in m² (Edit) to get a value from the local price per square metre</p>;
   const e = r.est;
   const v = convert(e.value, 'GBP', h.currency);
   return (
@@ -375,7 +375,7 @@ function AreaSuggestion({ h }: { h: Holding }) {
       <div>
         <b>Area estimate: {formatMoney(convert(e.value, 'GBP', currency), currency, { decimals: false })}</b>: {e.area} ({e.district}) median {formatMoney(convert(e.psm, 'GBP', currency), currency, { decimals: false })} per m² × {e.sqm} m².
       </div>
-      <span className="muted small">HM Land Registry sold prices matched to EPC floor areas, 12 months to {e.asOf} ({e.sales} sales). A district average, so your own value may differ. <a href={LONDON_PSM_SOURCE_URL} target="_blank" rel="noreferrer">Source</a></span>
+      <span className="muted small">Based on recorded sales in the 12 months to {e.asOf} ({e.sales} sales). A district average, so your own value may differ</span>
       <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: Math.round(v) })}>Use this estimate</button></div>
     </div>
   );
@@ -392,9 +392,9 @@ function HpiSuggestion({ h }: { h: Holding }) {
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  if (!h.details?.postcode) return <p className="field-hint">Add a postcode (Edit) to get a house price index estimate.</p>;
-  if (est === 'loading') return <p className="field-hint">Checking the HM Land Registry house price index…</p>;
-  if (!est) return <p className="field-hint">No house price index data for this postcode right now.</p>;
+  if (!h.details?.postcode) return <p className="field-hint">Add a postcode (Edit) to get a house price index estimate</p>;
+  if (est === 'loading') return <p className="field-hint">Checking the house price index…</p>;
+  if (!est) return <p className="field-hint">No house price index data for this postcode right now</p>;
   const month = (m: string) => new Date(m + '-01T00:00:00Z').toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
   const same = est.fromMonth === est.toMonth;
   return (
@@ -402,10 +402,10 @@ function HpiSuggestion({ h }: { h: Holding }) {
       <div>
         <b>House price index estimate:</b>{' '}
         {same
-          ? <>no newer index data since your last value ({month(est.toMonth)} is the latest published for {est.area}).</>
+          ? <>no newer index data since your last value ({month(est.toMonth)} is the latest published for {est.area})</>
           : <>{formatMoney(convert(est.value, h.currency, currency), currency, { decimals: false })}: {est.area} prices moved {formatPct(est.changePct)} from {month(est.fromMonth)} to {month(est.toMonth)}.</>}
       </div>
-      <span className="muted small">HM Land Registry UK House Price Index, an area average for all property types; it lags about two months. <a href={est.url} target="_blank" rel="noreferrer">Source</a></span>
+      <span className="muted small">An area average for all property types; it lags about two months</span>
       {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: est.value })}>Use this estimate</button></div>}
     </div>
   );
@@ -417,8 +417,8 @@ const fmtYears = (y: number) => (y < 1 ? `${Math.max(1, Math.round(y * 12))} mon
 function WatchSuggestion({ h }: { h: Holding }) {
   const { addValuation, currency } = useStore();
   const e = watchEstimate(h);
-  if (!h.details?.brand) return <p className="field-hint">Add the brand (Edit) to get a free estimate from that brand's market trend.</p>;
-  if (!brandTrend(h.details.brand)) return <p className="field-hint">No free market index for {h.details.brand} yet, so no automatic estimate. Add the value by hand for now.</p>;
+  if (!h.details?.brand) return <p className="field-hint">Add the brand (Edit) to get a free estimate from that brand's market trend</p>;
+  if (!brandTrend(h.details.brand)) return <p className="field-hint">No free market index for {h.details.brand} yet, so no automatic estimate. Add the value by hand for now</p>;
   if (!e) return null;
   const same = e.appliedYears < 1 / 52;
   return (
@@ -426,11 +426,11 @@ function WatchSuggestion({ h }: { h: Holding }) {
       <div>
         <span className="tag-est">Estimate</span>{' '}
         {same
-          ? <>{e.brand} prices moved <b>{formatPct(e.trendPct)}</b> over the last year. Your value is from this week, so there's nothing to adjust yet.</>
-          : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b>: your value from {formatDate(e.base.date, 'long')} moved by the {e.brand} market trend ({formatPct(e.trendPct)} a year{e.appliedYears < 1 ? `, ${fmtYears(e.appliedYears)} of it` : ''}).</>}
+          ? <>{e.brand} prices moved <b>{formatPct(e.trendPct)}</b> over the last year. Your value is from this week, so there's nothing to adjust yet</>
+          : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b>: your value from {formatDate(e.base.date, 'long')} moved by the {e.brand} market trend ({formatPct(e.trendPct)} a year{e.appliedYears < 1 ? `, ${fmtYears(e.appliedYears)} of it` : ''})</>}
       </div>
       <span className="muted small">
-        WatchCharts {e.brand} index, 1-year change, as of {WATCH_INDEX_AS_OF}. A brand average of its 30 most traded models, not your exact watch{e.olderThanYear ? '; your last value is over a year old and only the last 12 months of trend are known.' : ''}. <a href={WATCH_INDEX_URL} target="_blank" rel="noreferrer">Source</a>
+        {e.brand} market trend, 1-year change, as of {WATCH_INDEX_AS_OF}. A brand average of its 30 most traded models, not your exact watch{e.olderThanYear ? '; your last value is over a year old and only the last 12 months of trend are known' : ''}
       </span>
       {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: e.value })}>Use this estimate</button></div>}
     </div>
@@ -441,7 +441,7 @@ function WatchSuggestion({ h }: { h: Holding }) {
 function CarSuggestion({ h }: { h: Holding }) {
   const { addValuation, currency } = useStore();
   const e = carEstimate(h);
-  if (!h.details?.year) return <p className="field-hint">Add the year (Edit) to get a free estimate from typical UK depreciation.</p>;
+  if (!h.details?.year) return <p className="field-hint">Add the year (Edit) to get a free estimate from typical UK depreciation</p>;
   if (!e) return null;
   const same = Math.abs(e.value - e.base.value) < 1;
   return (
@@ -449,10 +449,10 @@ function CarSuggestion({ h }: { h: Holding }) {
       <div>
         <span className="tag-est">Estimate</span>{' '}
         {same
-          ? <>{e.classic ? 'Over 25 years old, so treated as a classic and held at your value.' : 'Your value is recent, so typical depreciation hasn\'t moved it yet.'}</>
+          ? <>{e.classic ? 'Over 25 years old, so treated as a classic and held at your value' : 'Your value is recent, so typical depreciation hasn\'t moved it yet'}</>
           : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b>: typical depreciation for a car aged {fmtYears(e.ageThen)} → {fmtYears(e.ageNow)} ({formatPct(e.changePct)}) from your {e.base.kind} of {formatMoney(convert(e.base.value, h.currency, currency), currency, { decimals: false })}{e.mileageAdjPct ? `, ${e.mileageAdjPct > 0 ? 'plus' : 'minus'} ${Math.abs(e.mileageAdjPct)}% for mileage` : ''}.</>}
       </div>
-      <span className="muted small">Average UK curve (about 25% in year one, around 60% gone by year five, flattening after eight; AA, RAC). Real prices vary a lot by model and condition, so update the value by hand if you know better. <a href={CAR_CURVE_SOURCE_URL} target="_blank" rel="noreferrer">Source</a></span>
+      <span className="muted small">Average UK curve (about 25% in year one, around 60% gone by year five, flattening after eight). Real prices vary a lot by model and condition, so update the value by hand if you know better</span>
       {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: e.value })}>Use this estimate</button></div>}
     </div>
   );
@@ -474,8 +474,8 @@ function StreetSales({ h }: { h: Holding }) {
   }, [key]);
   if (!h.details?.postcode) return null;
   if (r === 'loading') return <p className="field-hint">Checking recent sold prices nearby…</p>;
-  if (r === 'error') return <p className="field-hint">Couldn't reach HM Land Registry sold prices just now.</p>;
-  if (!r || !r.sales.length) return <p className="field-hint">No recorded sales at this postcode in the last five years (sold prices cover England and Wales).</p>;
+  if (r === 'error') return <p className="field-hint">Couldn't load sold prices just now</p>;
+  if (!r || !r.sales.length) return <p className="field-hint">No recorded sales at this postcode in the last five years (sold prices cover England and Wales)</p>;
   const shown = all ? r.sales.slice(0, 20) : r.sales.slice(0, 4);
   const money = (n: number) => formatMoney(convert(n, 'GBP', currency), currency, { decimals: false, compact: n >= 1_000_000 });
   return (
@@ -494,7 +494,7 @@ function StreetSales({ h }: { h: Holding }) {
         ))}
       </ul>
       {r.sales.length > 4 && <button className="link-btn small" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show ${Math.min(20, r.sales.length)} recent sales`}</button>}
-      <span className="muted small">For comparison, not a valuation: sizes vary a lot. {PPD_ATTRIBUTION} <a href={PPD_URL} target="_blank" rel="noreferrer">Source</a></span>
+      <span className="muted small">For comparison, not a valuation: sizes vary a lot</span>
     </div>
   );
 }

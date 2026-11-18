@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CATEGORIES, CATEGORY_COLORS } from '../data/categories';
+import { CATEGORIES } from '../data/categories';
+import { categoryColors, seriesColors } from '../config/palette';
 import { buildSeries, categoryChange, categoryValue, daysBetween, firstDate, grossAssets, holdingChange, holdingValue, holdingValueOn, lastUpdated, rangeStart, rawValueOn, totalChange, totalValue } from '../domain/calc';
 import { convert, formatMoney } from '../config/currencies';
 import { RANGES, formatDate, todayISO } from '../domain/dates';
@@ -10,7 +11,7 @@ import { go } from '../state/router';
 import { buildForecast, withForecast } from '../domain/forecast';
 import { Allocation } from '../components/Allocation';
 import { MainTabs } from '../components/MainTabs';
-import { AreaTrend, ForecastTrend, LINE_COLORS, MultiTrend } from '../components/Charts';
+import { AreaTrend, ForecastTrend, MultiTrend } from '../components/Charts';
 import { ChangePill, GrowthStats, Money } from '../components/Money';
 import { RangeTabs } from '../components/RangeTabs';
 import { AddHoldingModal } from '../components/Forms';
@@ -25,7 +26,8 @@ import { typeById, typesFor } from '../data/holdingTypes';
 import type { Provider, ProviderKind } from '../data/providers';
 
 export function Dashboard({ tab }: { tab: CategoryId }) {
-  const { holdings, currency, range, user, loadSample, marketVersion } = useStore();
+  const { holdings, currency, range, user, loadSample, marketVersion, theme } = useStore();
+  const CATEGORY_COLORS = categoryColors(theme);
   const [moved, setMoved] = useState(false);
   const [showForecast, setShowForecast] = useState(false);
   const [years, setYears] = useState(10);
@@ -53,7 +55,7 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
             <div className="eyebrow-row">
               <div className="eyebrow">Total Net Worth</div>
               {streak && streak.count >= 2 && (
-                <span className="streak" title={`Open Cardinal every day to keep your streak going. Best: ${streak.best} days.`}>
+                <span className="streak" title={`Open Cardinal every day to keep your streak going. Best: ${streak.best} days`}>
                   <Icon name="sparkle" size={12} />{streak.count}-day streak
                 </span>
               )}
@@ -76,8 +78,8 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
         </div>
         {empty ? (
           <div className="empty">
-            <h3>Hi {user?.firstName}, let's build your picture.</h3>
-            <p className="muted">Add your first account or asset below. Your net worth and its graph appear here as soon as you do.</p>
+            <h3>Hi {user?.firstName}, Let's Build Your Picture</h3>
+            <p className="muted">Add your first account or asset below. Your net worth and its graph appear here as soon as you do</p>
             <button className="btn btn-outline" onClick={loadSample}><Icon name="sparkle" size={16} /> Explore with sample data</button>
           </div>
         ) : (
@@ -98,9 +100,9 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
               forecast ? (
                 <div className="forecast-note">
                   <div>If your trend continues, you could have <b>{formatMoney(forecast.endValue, currency, { decimals: false })}</b> in {forecast.years} years<b>*</b></div>
-                  <span className="muted small">*Projected from your average past performance ({forecast.method === 'compound' ? `${forecast.rate.toFixed(1)}% a year since ${formatDate(firstDate(holdings)!, 'long')}` : `about ${formatMoney(forecast.rate, currency, { decimals: false })} a year`}), shown as the dotted line. Based on past performance, which does not guarantee future performance. Includes money you add, not only returns.</span>
+                  <span className="muted small">*Projected from your average past performance ({forecast.method === 'compound' ? `${forecast.rate.toFixed(1)}% a year since ${formatDate(firstDate(holdings)!, 'long')}` : `about ${formatMoney(forecast.rate, currency, { decimals: false })} a year`}), shown as the dotted line. Based on past performance, which does not guarantee future performance. Includes money you add, not only returns</span>
                 </div>
-              ) : <p className="muted small">Not enough history yet to project a trend. Add a few weeks of balances first.</p>
+              ) : <p className="muted small">Not enough history yet to project a trend. Add a few weeks of balances first</p>
             )}
             <GrowthStats change={ch} periodLabel={rangeLabel} note="Net worth growth includes money you add or withdraw, not only investment returns." />
           </>
@@ -136,7 +138,8 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
 }
 
 function CategoryPanel({ category }: { category: CategoryId }) {
-  const { holdings, currency, range, marketVersion } = useStore();
+  const { holdings, currency, range, marketVersion, theme } = useStore();
+  const LINE_COLORS = seriesColors(theme, true);
   const [view, setView] = useState<'overview' | 'connect'>('overview');
   const [adding, setAdding] = useState<{ providerId?: string } | null>(null);
   const [connecting, setConnecting] = useState<Provider | null>(null);
@@ -160,7 +163,7 @@ function CategoryPanel({ category }: { category: CategoryId }) {
   const sorted = [...items].sort((a, b) => holdingValue(b, currency) - holdingValue(a, currency));
   const lines = useMemo(
     () => [
-      { key: 'total', name: `Total ${cat.label.toLowerCase()}`, color: '#DB0011' },
+      { key: 'total', name: `Total ${cat.label}`, color: theme === 'dark' ? '#FF3B47' : '#DB0011' },
       ...sorted.slice(0, 9).map((h, i) => ({ key: h.id, name: h.name, color: LINE_COLORS[i % LINE_COLORS.length] })),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -185,11 +188,11 @@ function CategoryPanel({ category }: { category: CategoryId }) {
           {debtSummary && (
             <div className="growth">
               <div className="growth-item">
-                <span className="growth-label">Monthly payments</span>
+                <span className="growth-label">Monthly Payments</span>
                 <span className="growth-val">{debtSummary.monthly > 0 ? formatMoney(debtSummary.monthly, currency, { decimals: false }) : '-'}</span>
               </div>
               <div className="growth-item">
-                <span className="growth-label">Average rate</span>
+                <span className="growth-label">Average Rate</span>
                 <span className="growth-val">{debtSummary.avgRate !== null ? `${debtSummary.avgRate.toFixed(2)}%` : '-'}</span>
                 <span className="growth-hint">Weighted by balance</span>
               </div>
@@ -210,7 +213,7 @@ function CategoryPanel({ category }: { category: CategoryId }) {
       {addedName && (
         <div className="toast" role="status">
           <Icon name="check" size={18} />
-          <span><b>{addedName}</b> added.</span>
+          <span><b>{addedName}</b> added</span>
           <button className="link-btn" onClick={() => setAdding({})}>Add another</button>
           <button className="icon-btn sm" aria-label="Dismiss" onClick={() => setJustAdded(null)}><Icon name="close" size={14} /></button>
         </div>
@@ -224,7 +227,7 @@ function CategoryPanel({ category }: { category: CategoryId }) {
         </div>
       ) : items.length === 0 ? (
         <div className="empty">
-          <p className="muted">{cat.blurb}. Nothing added yet.</p>
+          <p className="muted">{cat.blurb}. Nothing added yet</p>
           <div className="type-quick">
             {typesFor(category).map((t) => (
               <button key={t.id} className="chip" onClick={() => setAdding({})}><Icon name={t.icon} size={16} /> {t.label}</button>
@@ -283,7 +286,7 @@ function summariseDebts(items: Holding[], ccy: Parameters<typeof convert>[2]) {
 }
 
 function connectTitle(category: CategoryId) {
-  return category === 'cash' ? 'Select a bank' : category === 'crypto' ? 'Select an exchange or wallet' : 'Select a provider';
+  return category === 'cash' ? 'Select A Bank' : category === 'crypto' ? 'Select An Exchange Or Wallet' : 'Select A Provider';
 }
 
 function HoldingRow({ h, start }: { h: Holding; start: string }) {

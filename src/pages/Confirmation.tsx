@@ -10,8 +10,8 @@ export function Confirmation() {
     <div className="page">
       <section className="card confirm-card">
         <div className="confirm-badge"><Bird size={72} /><span className="confirm-tick"><Icon name="check" size={18} /></span></div>
-        <h1>You're in, {user?.firstName}</h1>
-        <p className="muted">Your Cardinal account has been created.</p>
+        <h1>You're In, {user?.firstName}</h1>
+        <p className="muted">Your Cardinal account has been created</p>
         <dl className="confirm-details">
           <div><dt>Name</dt><dd>{user?.firstName} {user?.lastName}</dd></div>
           <div><dt>Email</dt><dd>{user?.email}</dd></div>
@@ -20,7 +20,7 @@ export function Confirmation() {
           <Icon name="mail" size={18} />
           {confirmationEmailSent
             ? <span>We've sent a confirmation email to <b>{user?.email}</b>.</span>
-            : <span>Confirmation emails are coming soon. For now, this screen is your confirmation. Your data stays in this browser on this device.</span>}
+            : <span>Confirmation emails are coming soon. For now, this screen is your confirmation. Your data stays in this browser on this device</span>}
         </p>
         <button className="btn btn-primary btn-lg" onClick={() => go('dashboard')}>Go to my dashboard</button>
       </section>

@@ -74,7 +74,7 @@ const SOCIALS: Social[] = [
 
 const GROUPS: { title: string; links: { label: string; href: string }[] }[] = [
   { title: 'Company', links: [{ label: 'About', href: '#/info/about' }, { label: 'Contact', href: '#/info/contact' }] },
-  { title: 'Legal', links: [{ label: 'Privacy', href: '#/info/privacy' }, { label: 'Terms', href: '#/info/terms' }] },
+  { title: 'Legal', links: [{ label: 'Privacy Policy', href: '#/info/privacy' }, { label: 'Terms Of Use', href: '#/info/terms' }] },
 ];
 
 /**
@@ -93,7 +93,7 @@ export function Footer() {
           <p>Your net worth, all in one place</p>
         </div>
         <a className="footer-account" href={user ? '#/settings' : '#/login'}>
-          {user ? 'Your settings' : 'Sign in / Register'} <span className="raquo">»</span>
+          {user ? 'Your Settings' : 'Sign In / Register'} <span className="raquo">»</span>
         </a>
         <div className="footer-groups">
           {GROUPS.map((g) => {
@@ -127,10 +127,10 @@ export function Footer() {
           </ul>
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Cardinal. All rights reserved.</span>
+          <span>© 2026 Cardinal. All rights reserved</span>
           <button className="back-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Back to top">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6" /></svg>
-            <span>Back to top</span>
+            <span>Back To Top</span>
           </button>
         </div>
       </div>
