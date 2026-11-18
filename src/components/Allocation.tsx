@@ -100,7 +100,7 @@ export function Allocation() {
               <AreaChart data={history} stackOffset="expand" margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                 <XAxis dataKey="date" tickFormatter={(d: string) => formatDate(d, 'month')} tick={{ fontSize: 10, fill: grid }} axisLine={false} tickLine={false} minTickGap={40} />
                 <YAxis hide />
-                {parts.map((c) => <Area key={c.id} type="monotone" dataKey={c.id} stackId="1" stroke="none" fill={categoryColors(theme)[c.id]} isAnimationActive={false} />)}
+                {parts.map((c) => <Area key={c.id} type="monotone" dataKey={c.id} stackId="1" stroke="none" fill={categoryColors(theme)[c.id]} fillOpacity={1} isAnimationActive={false} />)}
                 <ReferenceLine x={history.reduce((best, p) => (Math.abs(daysBetween(p.date, date)) < Math.abs(daysBetween(best, date)) ? p.date : best), history[0].date)} stroke="#fff" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
