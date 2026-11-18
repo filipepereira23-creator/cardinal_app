@@ -21,8 +21,8 @@ export function Welcome() {
   return (
     <AuthFrame>
       <Bird className="welcome-bird" />
-      <h1 className="welcome-title">Welcome to Cardinal.</h1>
-      <p className="muted center">See everything you own in one number, and watch it move.</p>
+      <h1 className="welcome-title">Welcome to Cardinal</h1>
+      <p className="muted center">See everything you own in one number, and watch it move</p>
       <div className="stack">
         <button className="btn btn-primary btn-lg" onClick={() => go('login')}>Log in</button>
         <button className="btn btn-outline btn-lg" onClick={() => go('register')}>Register now</button>

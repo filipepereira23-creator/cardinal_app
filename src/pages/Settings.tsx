@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
-import { CURRENCIES, NUMBER_FORMATS, convert, formatMoney, type CurrencyCode } from '../config/currencies';
+import { downloadExcel } from '../export/excel';
+import { CURRENCIES, convert, formatMoney, type CurrencyCode } from '../config/currencies';
 import { formatDate } from '../domain/dates';
 import { METALS, spotPerGram } from '../valuation/metals';
 import { RANGES, type RangeId } from '../domain/dates';
@@ -51,22 +52,14 @@ function rateText(v: number, ccy: CurrencyCode): string {
 }
 
 export function SettingsPage() {
-  const { user, settings, updateSettings, updateProfile, currency, setCurrency, exportData, clearAll, deleteAccount, logout, holdings, fx, spot, refreshMarket } = useStore();
+  const { user, settings, updateSettings, updateProfile, currency, setCurrency, clearAll, deleteAccount, logout, holdings, fx, spot, refreshMarket } = useStore();
   const [refreshing, setRefreshing] = useState(false);
   const [p, setP] = useState({ firstName: user?.firstName ?? '', lastName: user?.lastName ?? '', email: user?.email ?? '' });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const dirty = p.firstName !== user?.firstName || p.lastName !== user?.lastName || p.email !== user?.email;
   const notif = (k: keyof SettingsT['notifications'], v: boolean) => updateSettings({ notifications: { ...settings.notifications, [k]: v } });
 
-  const download = () => {
-    const blob = new Blob([exportData()], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cardinal-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
+  const download = () => downloadExcel(holdings, currency, `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim());
 
   return (
     <div className="page settings">
@@ -120,9 +113,6 @@ export function SettingsPage() {
               </select>
             </Field>
           </div>
-          <Field label="Number format">
-            <Segmented label="Number format" value={settings.numberFormat} onChange={(numberFormat) => updateSettings({ numberFormat })} options={NUMBER_FORMATS} />
-          </Field>
           <Toggle label="Show pence and cents" checked={settings.showDecimals} onChange={(showDecimals) => updateSettings({ showDecimals })} />
           <Toggle label="Hide balances" hint="Shows •••• instead of amounts. Handy in public." checked={settings.hideBalances} onChange={(hideBalances) => updateSettings({ hideBalances })} />
         </div>
@@ -177,7 +167,7 @@ export function SettingsPage() {
 
       <Section title="Your data" icon="download" note="Your accounts and values are stored in this browser on this device only.">
         <div className="settings-actions">
-          <button className="btn btn-outline" onClick={download}><Icon name="download" size={16} /> Export data (JSON)</button>
+          <button className="btn btn-outline" onClick={download}><Icon name="download" size={16} /> Export to Excel</button>
           <button className="btn btn-ghost" disabled={!holdings.length} onClick={() => confirm("Remove every account and asset from Cardinal? Your login stays. This can't be undone.") && clearAll()}>
             <Icon name="trash" size={16} /> Delete all data
           </button>

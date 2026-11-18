@@ -219,7 +219,7 @@ function CategoryPanel({ category }: { category: CategoryId }) {
       {view === 'connect' && canConnect ? (
         <div className="connect-view">
           <h3 className="center">{connectTitle(category)}</h3>
-          <p className="muted center small">Read-only and secure. Cardinal will never move your money. Live connections are coming soon, so add balances manually for now.</p>
+          <p className="muted center small">Read-only and secure. Cardinal will never move your money. Live connections are coming soon, so add balances manually for now</p>
           <ProviderList kinds={kinds} onPick={(p) => setConnecting(p)} onManual={() => setAdding({})} />
         </div>
       ) : items.length === 0 ? (

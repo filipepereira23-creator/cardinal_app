@@ -10,7 +10,7 @@ export function Confirmation() {
     <div className="page">
       <section className="card confirm-card">
         <div className="confirm-badge"><Bird size={72} /><span className="confirm-tick"><Icon name="check" size={18} /></span></div>
-        <h1>You're in, {user?.firstName}.</h1>
+        <h1>You're in, {user?.firstName}</h1>
         <p className="muted">Your Cardinal account has been created.</p>
         <dl className="confirm-details">
           <div><dt>Name</dt><dd>{user?.firstName} {user?.lastName}</dd></div>

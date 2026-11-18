@@ -6,7 +6,8 @@ import { useStore } from '../state/store';
 import { go } from '../state/router';
 
 export function Header() {
-  const { user, logout, loadSample, clearAll, holdings } = useStore();
+  const { user, logout, loadSample, clearAll, holdings, settings, updateSettings } = useStore();
+  const hidden = settings.hideBalances;
   const [open, setOpen] = useState(false);
   const initials = user ? (user.firstName[0] + (user.lastName[0] ?? '')).toUpperCase() : '';
   return (
@@ -18,6 +19,13 @@ export function Header() {
         </span>
         <div className="header-right">
           <CurrencySelect />
+          <button className="icon-btn" aria-label={hidden ? 'Show balances' : 'Hide balances'} aria-pressed={hidden} title={hidden ? 'Show balances' : 'Hide balances'} onClick={() => updateSettings({ hideBalances: !hidden })}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+              {hidden && <path d="M4 4l16 16" />}
+            </svg>
+          </button>
           <a href="#/settings" className="icon-btn header-gear" aria-label="Settings" title="Settings"><Icon name="gear" size={20} /></a>
           <div className="menu-wrap">
             <button className="avatar" onClick={() => setOpen((o) => !o)} aria-label="Account menu">{initials}</button>

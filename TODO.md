@@ -12,3 +12,4 @@
 11. Downloadable app and Face ID, once the server is in and the app is more final.
 12. Pick a domain (e.g. getcardinal.co.uk) and set up a Cardinal email.
 13. Free government lookups that need a private key, once the server is in: car details and MOT mileage from the registration (DVLA, DVSA), and floor areas from energy certificates (EPC) for property estimates.
+14. Choose a campaign theme and build the content plan.

@@ -10,8 +10,8 @@ export const CATEGORIES: { id: CategoryId; label: string; singular: string; blur
 
 export const CATEGORY_COLORS: Record<CategoryId, string> = {
   cash: '#DB0011',
-  investment: '#8E0A12',
+  investment: '#1D1D1F',
   crypto: '#F0807F',
-  assets: '#4A4A4A',
-  debts: '#9A9AA0',
+  assets: '#8E0A12',
+  debts: '#B9B9BF',
 };

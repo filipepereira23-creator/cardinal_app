@@ -122,7 +122,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Theme, number format and hidden balances follow settings everywhere.
   useEffect(() => {
-    setMoneyPrefs({ locale: settings.numberFormat, hide: settings.hideBalances, decimals: settings.showDecimals });
+    setMoneyPrefs({ locale: 'en-GB', hide: settings.hideBalances, decimals: settings.showDecimals });
     setTheme(applyTheme(settings.theme));
     localStorage.setItem(THEME_KEY, settings.theme);
     if (settings.theme !== 'system') return;

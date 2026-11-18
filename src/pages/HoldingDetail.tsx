@@ -7,14 +7,14 @@ import { formatDate, RANGES, todayISO } from '../domain/dates';
 import { providerById } from '../data/providers';
 import { typeById } from '../data/holdingTypes';
 import { CATEGORIES } from '../data/categories';
-import { AUTOTRADER_VALUATION_URL, MOVALUE_URL, STALE_AFTER_DAYS, goldQuote, priceCheckLink, pricingMode } from '../valuation/valuers';
+import { STALE_AFTER_DAYS, goldQuote, pricingMode } from '../valuation/valuers';
 import { metalSpec, spotPerGram } from '../valuation/metals';
 import { areaLookup } from '../valuation/areaPrice';
 import { LONDON_PSM_SOURCE_URL } from '../data/londonPsm';
 import { hpiEstimate, type HpiEstimate } from '../valuation/houseIndex';
 import { PPD_ATTRIBUTION, PPD_URL, recentSales, type SalesResult } from '../valuation/streetSales';
 import { CAR_CURVE_SOURCE_URL, carEstimate } from '../valuation/carEstimate';
-import { WATCH_INDEX_AS_OF, WATCH_INDEX_URL, brandTrend, watchChartsLink, watchEstimate } from '../valuation/watchEstimate';
+import { WATCH_INDEX_AS_OF, WATCH_INDEX_URL, brandTrend, watchEstimate } from '../valuation/watchEstimate';
 import { AreaTrend } from '../components/Charts';
 import { ChangePill, GrowthStats, Money } from '../components/Money';
 import { RangeTabs } from '../components/RangeTabs';
@@ -333,7 +333,6 @@ function ValueSource({ h }: { h: Holding }) {
   const mode = pricingMode(h.type);
   const updated = lastUpdated(h);
   const age = updated ? daysBetween(updated, todayISO()) : 0;
-  const link = priceCheckLink(h);
 
   if (h.type === 'gold' && h.source === 'priced') {
     const q = goldQuote(h, spot);
@@ -342,7 +341,7 @@ function ValueSource({ h }: { h: Holding }) {
     return (
       <div className="value-source">
         <span><span className="live-dot" />Valued live from the spot price{perG !== null ? ` (${formatMoney(perG, currency)}/g)` : ''}{spec ? ` × ${+spec.grams.toFixed(2)} g × ${(spec.purity * 100).toFixed(2).replace(/\.?0+$/, '')}% pure` : ''}</span>
-        <span className="muted">{q ? `Updated ${new Date(q.asOf).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ` : 'Waiting for a price · '}<a href="https://gold-api.com" target="_blank" rel="noreferrer">gold-api.com</a></span>
+        <span className="muted">{q ? `Updated ${new Date(q.asOf).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ` : 'Waiting for a price'}</span>
       </div>
     );
   }
@@ -352,14 +351,6 @@ function ValueSource({ h }: { h: Holding }) {
     <>
       <div className="value-source">
         <span>Last updated {updated ? formatDate(updated, 'long') : 'never'}{stale ? <span className="stale"> · it's been {Math.round(age / 30)} months, worth a quick check</span> : ''}</span>
-        {link && (
-          <span className="price-links">
-            <a href={link.url} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> {link.label}</a>
-            {h.type === 'watch' && <a href={watchChartsLink(h)} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free WatchCharts price</a>}
-            {h.type === 'car' && <a href={MOVALUE_URL} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free moValue valuation</a>}
-            {h.type === 'car' && <a href={AUTOTRADER_VALUATION_URL} target="_blank" rel="noreferrer"><Icon name="link" size={14} /> Free Auto Trader valuation</a>}
-          </span>
-        )}
       </div>
       {mode === 'index' && <AreaSuggestion h={h} />}
       {mode === 'index' && <HpiSuggestion h={h} />}
@@ -427,7 +418,7 @@ function WatchSuggestion({ h }: { h: Holding }) {
   const { addValuation, currency } = useStore();
   const e = watchEstimate(h);
   if (!h.details?.brand) return <p className="field-hint">Add the brand (Edit) to get a free estimate from that brand's market trend.</p>;
-  if (!brandTrend(h.details.brand)) return <p className="field-hint">No free market index for {h.details.brand} yet, so no automatic estimate. Use the price links above and update the value by hand.</p>;
+  if (!brandTrend(h.details.brand)) return <p className="field-hint">No free market index for {h.details.brand} yet, so no automatic estimate. Add the value by hand for now.</p>;
   if (!e) return null;
   const same = e.appliedYears < 1 / 52;
   return (
@@ -439,7 +430,7 @@ function WatchSuggestion({ h }: { h: Holding }) {
           : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b>: your value from {formatDate(e.base.date, 'long')} moved by the {e.brand} market trend ({formatPct(e.trendPct)} a year{e.appliedYears < 1 ? `, ${fmtYears(e.appliedYears)} of it` : ''}).</>}
       </div>
       <span className="muted small">
-        WatchCharts {e.brand} index, 1-year change, as of {WATCH_INDEX_AS_OF}. A brand average of its 30 most traded models, not your exact watch{e.olderThanYear ? '; your last value is over a year old and only the last 12 months of trend are known, so check the price link too' : ''}. <a href={WATCH_INDEX_URL} target="_blank" rel="noreferrer">Source</a>
+        WatchCharts {e.brand} index, 1-year change, as of {WATCH_INDEX_AS_OF}. A brand average of its 30 most traded models, not your exact watch{e.olderThanYear ? '; your last value is over a year old and only the last 12 months of trend are known.' : ''}. <a href={WATCH_INDEX_URL} target="_blank" rel="noreferrer">Source</a>
       </span>
       {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: e.value })}>Use this estimate</button></div>}
     </div>
@@ -461,7 +452,7 @@ function CarSuggestion({ h }: { h: Holding }) {
           ? <>{e.classic ? 'Over 25 years old, so treated as a classic and held at your value.' : 'Your value is recent, so typical depreciation hasn\'t moved it yet.'}</>
           : <><b>{formatMoney(convert(e.value, h.currency, currency), currency, { decimals: false })}</b>: typical depreciation for a car aged {fmtYears(e.ageThen)} → {fmtYears(e.ageNow)} ({formatPct(e.changePct)}) from your {e.base.kind} of {formatMoney(convert(e.base.value, h.currency, currency), currency, { decimals: false })}{e.mileageAdjPct ? `, ${e.mileageAdjPct > 0 ? 'plus' : 'minus'} ${Math.abs(e.mileageAdjPct)}% for mileage` : ''}.</>}
       </div>
-      <span className="muted small">Average UK curve (about 25% in year one, around 60% gone by year five, flattening after eight; AA, RAC). Real prices vary a lot by model and condition, so check the free valuation links too. <a href={CAR_CURVE_SOURCE_URL} target="_blank" rel="noreferrer">Source</a></span>
+      <span className="muted small">Average UK curve (about 25% in year one, around 60% gone by year five, flattening after eight; AA, RAC). Real prices vary a lot by model and condition, so update the value by hand if you know better. <a href={CAR_CURVE_SOURCE_URL} target="_blank" rel="noreferrer">Source</a></span>
       {!same && <div><button className="btn btn-outline btn-sm" onClick={() => addValuation(h.id, { date: todayISO(), value: e.value })}>Use this estimate</button></div>}
     </div>
   );

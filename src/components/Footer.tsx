@@ -90,7 +90,7 @@ export function Footer() {
       <div className="footer-inner">
         <div className="footer-brand">
           <Logo size={34} />
-          <p>Your net worth, all in one place.</p>
+          <p>Your net worth, all in one place</p>
         </div>
         <a className="footer-account" href={user ? '#/settings' : '#/login'}>
           {user ? 'Your settings' : 'Sign in / Register'} <span className="raquo">»</span>
