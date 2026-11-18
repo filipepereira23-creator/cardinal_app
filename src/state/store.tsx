@@ -22,16 +22,43 @@ function systemDark(): boolean {
 }
 
 /** Applies the theme to <html data-theme> so CSS variables switch, and remembers it for the sign-in pages. */
+/** Hour of day where the user is. Uses the device's own time zone, falling back to London time. */
+function localHour(): number {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) return new Date().getHours();
+  } catch { /* fall through */ }
+  try {
+    return Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/London' }).format(new Date()));
+  } catch {
+    return new Date().getUTCHours();
+  }
+}
+
+/** Auto theme: dark from 6pm to 7am local time, light the rest of the day. */
+export function autoDark(): boolean {
+  const h = localHour();
+  return h >= 18 || h < 7;
+}
+
 function applyTheme(theme: Settings['theme']): 'light' | 'dark' {
-  const resolved = theme === 'system' ? (systemDark() ? 'dark' : 'light') : theme;
+  const resolved = theme === 'auto' ? (autoDark() ? 'dark' : 'light') : theme === 'system' ? (systemDark() ? 'dark' : 'light') : theme;
   document.documentElement.dataset.theme = resolved;
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', resolved === 'dark' ? '#0f0f11' : '#ffffff');
   return resolved;
 }
 
+/** v1.6: the old default was 'system'. Move everyone still on it to the new Auto (dark 6pm to 7am) once. */
+function migrateTheme(st: Settings): Settings {
+  const flag = 'cardinal.autoTheme.v16';
+  if (localStorage.getItem(flag)) return st;
+  localStorage.setItem(flag, '1');
+  return st.theme === 'system' ? { ...st, theme: 'auto' } : st;
+}
+
 function storedTheme(): Settings['theme'] {
   const t = localStorage.getItem(THEME_KEY);
-  return t === 'light' || t === 'dark' || t === 'system' ? t : 'system';
+  return t === 'light' || t === 'dark' || t === 'system' || t === 'auto' ? t : 'auto';
 }
 
 interface Store {
@@ -127,6 +154,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMoneyPrefs({ locale: 'en-GB', hide: settings.hideBalances, decimals: settings.showDecimals });
     setTheme(applyTheme(settings.theme));
     localStorage.setItem(THEME_KEY, settings.theme);
+    if (settings.theme === 'auto') {
+      // Re-check every minute so it switches at 6pm and 7am without a reload.
+      const t = window.setInterval(() => setTheme(applyTheme('auto')), 60_000);
+      return () => window.clearInterval(t);
+    }
     if (settings.theme !== 'system') return;
     const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
     const on = () => setTheme(applyTheme('system'));
@@ -139,7 +171,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const u = await auth.currentUser();
       if (u) {
         setPortfolio(clean(await storage.loadPortfolio(u.id)));
-        const st = await storage.loadSettings(u.id);
+        const st = migrateTheme(await storage.loadSettings(u.id));
         setSettings(st);
         setRange(st.defaultRange);
         loadedFor.current = u.id;
@@ -208,7 +240,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (u: UserProfile, isNew = false) => {
     const p = clean(await storage.loadPortfolio(u.id));
     // A new account starts with whatever theme was picked on the sign-in pages.
-    const st = isNew ? { ...DEFAULT_SETTINGS, theme: storedTheme() } : await storage.loadSettings(u.id);
+    const st = isNew ? { ...DEFAULT_SETTINGS, theme: storedTheme() } : migrateTheme(await storage.loadSettings(u.id));
     loadedFor.current = u.id;
     setPortfolio(p);
     setSettings(st);

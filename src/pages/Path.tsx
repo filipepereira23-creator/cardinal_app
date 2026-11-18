@@ -53,7 +53,7 @@ export function PathPage() {
     <div className="page">
       <MainTabs active="path" />
       <section className="card path-hero">
-        <div className="eyebrow">Your net worth path</div>
+        <div className="eyebrow">Your Net Worth Path</div>
         <div className="path-level">Level {reached}<span className="muted"> of {ms.length}</span></div>
         <div className="path-sub">You're at <b>{formatMoney(total, currency, { decimals: false })}</b>{next ? <>, <b>{formatMoney(next - gbp, currency, { decimals: false })}</b> to unlock level {reached + 1} ({label(next)}).</> : <>, every level unlocked. Legend.</>}</div>
         {next && (

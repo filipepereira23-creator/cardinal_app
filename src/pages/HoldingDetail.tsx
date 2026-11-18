@@ -121,7 +121,7 @@ export function HoldingDetail({ id }: { id: string }) {
 
       {positions.length > 0 && (
         <section className="card panel">
-          <h3 className="panel-subtitle">Inside this account</h3>
+          <h3 className="panel-subtitle">Inside This Account</h3>
           <ul className="rows">
             {positions.map((pos) => {
               const pv = positionValue(pos, h, currency);
@@ -175,7 +175,7 @@ export function HoldingDetail({ id }: { id: string }) {
           )}
           {history.length > 0 && (
             <>
-              <h3 className="panel-subtitle">{isDebt ? 'Balance history' : 'Value history'}</h3>
+              <h3 className="panel-subtitle">{isDebt ? 'Balance History' : 'Value History'}</h3>
               <History currency={h.currency} items={history} onDelete={(d) => deleteValuation(h.id, d)} />
             </>
           )}

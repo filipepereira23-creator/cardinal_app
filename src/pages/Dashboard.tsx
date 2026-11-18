@@ -51,7 +51,7 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
         <div className="hero-top">
           <div>
             <div className="eyebrow-row">
-              <div className="eyebrow">Total net worth</div>
+              <div className="eyebrow">Total Net Worth</div>
               {streak && streak.count >= 2 && (
                 <span className="streak" title={`Open Cardinal every day to keep your streak going. Best: ${streak.best} days.`}>
                   <Icon name="sparkle" size={12} />{streak.count}-day streak

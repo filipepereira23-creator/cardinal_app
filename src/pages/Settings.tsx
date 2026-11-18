@@ -94,7 +94,8 @@ export function SettingsPage() {
 
       <Section title="Appearance" icon="moon">
         <Field label="Theme">
-          <Segmented<Theme> label="Theme" value={settings.theme} onChange={(theme) => updateSettings({ theme })} options={[{ id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'System' }]} />
+          <Segmented<Theme> label="Theme" value={settings.theme} onChange={(theme) => updateSettings({ theme })} options={[{ id: 'auto', label: 'Auto' }, { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'Phone' }]} />
+          <p className="muted small">Auto is dark from 6pm to 7am your local time, and light the rest of the day.</p>
         </Field>
         <p className="field-hint">In dark mode the Cardinal bird turns yellow and the wordmark turns white.</p>
       </Section>
@@ -118,7 +119,7 @@ export function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Exchange rates & live prices" icon="chart">
+      <Section title="Exchange Rates & Live Prices" icon="chart">
         <div className="rates-head">
           <span className={`live-badge ${fx.live ? '' : 'off'}`}>{fx.live ? 'Live' : 'Offline'}</span>
           <button className="btn btn-ghost btn-sm" disabled={refreshing} onClick={async () => { setRefreshing(true); await refreshMarket(); setRefreshing(false); }}>
@@ -140,7 +141,7 @@ export function SettingsPage() {
           </tbody>
         </table>
         <p className="field-hint">Accounts can be entered in any of these {CURRENCIES.length} currencies and are converted at these rates. Without a connection, the last saved rates (or built-in ones) are used.</p>
-        <h3 className="panel-subtitle">Precious metals (spot)</h3>
+        <h3 className="panel-subtitle">Precious Metals (Spot)</h3>
         {spot ? (
           <table className="rates-table">
             <tbody>
@@ -165,7 +166,7 @@ export function SettingsPage() {
         <Toggle disabled label="Reminders to update values" hint="Monthly nudge for manually tracked assets" checked={settings.notifications.updateReminders} onChange={(v) => notif('updateReminders', v)} />
       </Section>
 
-      <Section title="Your data" icon="download" note="Your accounts and values are stored in this browser on this device only.">
+      <Section title="Your Data" icon="download" note="Your accounts and values are stored in this browser on this device only.">
         <div className="settings-actions">
           <button className="btn btn-outline" onClick={download}><Icon name="download" size={16} /> Export to Excel</button>
           <button className="btn btn-ghost" disabled={!holdings.length} onClick={() => confirm("Remove every account and asset from Cardinal? Your login stays. This can't be undone.") && clearAll()}>

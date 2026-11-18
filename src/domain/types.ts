@@ -88,7 +88,7 @@ export interface UserProfile {
   createdAt: string;
 }
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'system' | 'auto';
 
 /** Per-user preferences from the Settings page. */
 export interface Settings {
@@ -101,7 +101,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  theme: 'system',
+  theme: 'auto',
   numberFormat: 'en-GB',
   showDecimals: true,
   hideBalances: false,

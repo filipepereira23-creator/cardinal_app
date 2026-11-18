@@ -55,7 +55,7 @@ export function Allocation() {
     <section className="card alloc">
       <div className="panel-head">
         <div>
-          <div className="eyebrow">Where your wealth sits</div>
+          <div className="eyebrow">Where Your Wealth Sits</div>
           <div className="alloc-date">{back === 0 ? 'Today' : formatDate(date, 'long')}</div>
         </div>
         <div className="seg" role="tablist">
