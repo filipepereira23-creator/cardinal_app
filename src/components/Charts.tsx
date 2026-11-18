@@ -64,7 +64,7 @@ export function AreaTrend({ series, dataKey = 'total', ccy, height = 220, mini =
   );
 }
 
-/** Multi-line chart with a "Show on graph" legend to pick which lines to include. */
+/** Multi-line chart with a "Show On Graph" legend to pick which lines to include. */
 export function MultiTrend({ series, lines, ccy, height = 260 }: { series: SeriesPoint[]; lines: { key: string; name: string; color: string }[]; ccy: CurrencyCode; height?: number }) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const t = useChartTheme();
@@ -90,8 +90,8 @@ export function MultiTrend({ series, lines, ccy, height = 260 }: { series: Serie
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="legend" aria-label="Show on graph">
-        <div className="legend-title">Show on graph</div>
+      <div className="legend" aria-label="Show On Graph">
+        <div className="legend-title">Show On Graph</div>
         {lines.map((l) => (
           <label key={l.key} className={`legend-item ${hidden.has(l.key) ? 'off' : ''}`}>
             <input type="checkbox" checked={!hidden.has(l.key)} onChange={() => toggle(l.key)} />

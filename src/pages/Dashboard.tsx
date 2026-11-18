@@ -1,3 +1,4 @@
+import { titleCase } from '../domain/titleCase';
 import { useEffect, useMemo, useState } from 'react';
 import { CATEGORIES } from '../data/categories';
 import { categoryColors, seriesColors } from '../config/palette';
@@ -88,7 +89,7 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
             <div className="forecast-bar">
               <label className="check-row">
                 <input type="checkbox" checked={showForecast} onChange={(e) => setShowForecast(e.target.checked)} />
-                <span>Show forecast*</span>
+                <span>Show Forecast*</span>
               </label>
               {showForecast && (
                 <div className="seg" role="tablist" aria-label="Forecast length">
@@ -246,7 +247,7 @@ function CategoryPanel({ category }: { category: CategoryId }) {
               <button className="row row-add" onClick={() => setAdding({})}>
                 <span className="add-circle sm"><Icon name="plus" size={18} /></span>
                 <span className="row-main">
-                  <span className="row-title">Add another {cat.singular}</span>
+                  <span className="row-title">{titleCase(`Add another ${cat.singular}`)}</span>
                   <span className="row-sub">{category === 'debts' ? 'Mortgage, loan, car finance, card…' : canConnect ? 'Type in a balance, or pick a provider under Connect' : 'Type in what it’s worth today'}</span>
                 </span>
               </button>
