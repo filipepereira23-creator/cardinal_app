@@ -61,6 +61,7 @@ interface Entry { id: string; name: string; me?: boolean; pct: number | null; we
 export function ConnectionsPage() {
   const { user, holdings } = useStore();
   const [st, setSt] = useState<ConnState>(() => load(user?.id ?? 'anon'));
+  const [ask, setAsk] = useState(false);
   const [period, setPeriod] = useState<Period>('month');
   const [rankBy, setRankBy] = useState<RankBy>('pct');
   const [scope, setScope] = useState<string>('all');
@@ -120,17 +121,30 @@ export function ConnectionsPage() {
     <div className="page connections">
       <MainTabs active="connections" />
 
+      {ask && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={() => setAsk(false)}>
+          <div className="card modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3>{st.optIn ? 'Step Out Of Rankings?' : 'Join The Rankings?'}</h3>
+            {st.optIn ? (
+              <p className="muted">You will be hidden from the rankings in your groups. You still get your end of week, month and year reports, and you can join again any time</p>
+            ) : (
+              <p className="muted">Your friends and groups will see your % growth next to theirs, so everyone can see who is growing fastest. Nobody ever sees your balances or how much you made. You can step out any time from this same button</p>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setAsk(false)}>Not Now</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => { setSt((x) => ({ ...x, optIn: !x.optIn })); setAsk(false); }}>{st.optIn ? 'Step Out' : 'Yes, Join'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="card conn-hero">
         <div className="eyebrow">Your Flock</div>
         <h2 className="conn-title">Grow Together, Privately</h2>
         <p className="muted">Add friends, make groups and see who is growing fastest. Cardinal only ever shares percentages. Nobody ever sees how much anyone has or made</p>
-        <label className="toggle-row conn-optin">
-          <span className="toggle-text">
-            <span><b>Take Part In Rankings</b></span>
-            <span className="muted small">{st.optIn ? 'Your % growth shows in your groups. Your amounts never do' : 'You are hidden from rankings. You still get the end of week, month and year reports'}</span>
-          </span>
-          <input type="checkbox" role="switch" className="switch" checked={st.optIn} onChange={(e) => setSt((s) => ({ ...s, optIn: e.target.checked }))} />
-        </label>
+        <div className="conn-optin">
+          <button type="button" className={`btn btn-sm ${st.optIn ? 'btn-outline' : 'btn-primary'}`} onClick={() => setAsk(true)}>{st.optIn ? 'Rankings: On' : 'Join Rankings'}</button>
+        </div>
       </section>
 
       <section className="card">

@@ -631,3 +631,6 @@ html[data-theme='dark'] .streak { color: #FFD43B; background: rgba(255, 212, 59,
 
 /* Title Case on buttons (Filipe, 18 Nov 2026: every word starts with a capital). */
 .btn, .seg button, .chip { text-transform: capitalize; }
+.modal-card { max-width: 380px; width: 100%; padding: 22px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.conn-optin { margin-top: 12px; }
