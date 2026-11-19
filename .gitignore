@@ -4,3 +4,4 @@ node_modules
 docs/
 shots/
 shot.py
+tests/.out.cjs

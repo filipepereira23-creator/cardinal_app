@@ -7,6 +7,7 @@ import { HoldingDetail } from './pages/HoldingDetail';
 import { SettingsPage } from './pages/Settings';
 import { PathPage } from './pages/Path';
 import { ConnectionsPage } from './pages/Connections';
+import { IncomePage } from './pages/Income';
 import { Confirmation } from './pages/Confirmation';
 import { InfoPage } from './pages/Info';
 import { Header } from './components/Header';
@@ -42,6 +43,7 @@ export default function App() {
   if (page === 'holding' && arg) body = <HoldingDetail id={arg} />;
   else if (page === 'path') body = <PathPage />;
   else if (page === 'connections') body = <ConnectionsPage />;
+  else if (page === 'income') body = <IncomePage />;
   else if (page === 'settings') body = <SettingsPage />;
   else if (page === 'confirmed') body = <Confirmation />;
   else if (infoPage) body = <InfoPage id={arg} />;

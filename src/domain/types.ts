@@ -1,4 +1,5 @@
 import type { CurrencyCode } from '../config/currencies';
+import type { IncomeProfile } from './ukTax';
 
 export type CategoryId = 'cash' | 'investment' | 'crypto' | 'assets' | 'debts';
 
@@ -112,4 +113,6 @@ export const DEFAULT_SETTINGS: Settings = {
 export interface Portfolio {
   holdings: Holding[];
   displayCurrency: CurrencyCode;
+  /** Yearly income (UK PAYE), used for take-home pay and the forecast. Optional. */
+  income?: IncomeProfile;
 }

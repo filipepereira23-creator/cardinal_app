@@ -10,6 +10,8 @@ import type { CategoryId, Holding } from '../domain/types';
 import { useStore } from '../state/store';
 import { go } from '../state/router';
 import { buildForecast, withForecast } from '../domain/forecast';
+import { takeHome, yearlySavings } from '../domain/ukTax';
+import { OPEN_FORECAST_KEY } from './Income';
 import { Allocation } from '../components/Allocation';
 import { MainTabs } from '../components/MainTabs';
 import { AreaTrend, ForecastTrend, MultiTrend } from '../components/Charts';
@@ -27,10 +29,15 @@ import { typeById, typesFor } from '../data/holdingTypes';
 import type { Provider, ProviderKind } from '../data/providers';
 
 export function Dashboard({ tab }: { tab: CategoryId }) {
-  const { holdings, currency, range, user, loadSample, marketVersion, theme } = useStore();
+  const { holdings, currency, range, user, loadSample, marketVersion, theme, income } = useStore();
   const CATEGORY_COLORS = categoryColors(theme);
   const [moved, setMoved] = useState(false);
-  const [showForecast, setShowForecast] = useState(false);
+  const [showForecast, setShowForecast] = useState(() => {
+    // "See My Forecast" on the Income page opens the dashboard with the forecast on.
+    const open = sessionStorage.getItem(OPEN_FORECAST_KEY) === '1';
+    sessionStorage.removeItem(OPEN_FORECAST_KEY);
+    return open;
+  });
   const [years, setYears] = useState(10);
   const start = rangeStart(range, holdings);
   const total = totalValue(holdings, currency);
@@ -40,7 +47,12 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
   const ch = totalChange(holdings, currency, start);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const series = useMemo(() => buildSeries(start, { total: (d) => totalValue(holdings, currency, d) }), [holdings, currency, start, marketVersion]);
-  const forecast = useMemo(() => (showForecast ? buildForecast(holdings, currency, years) : null), [showForecast, holdings, currency, years, marketVersion]);
+  // Savings from income (plus pension contributions) are added to the forecast each year, in the display currency.
+  const incomeOn = !!income && income.salary > 0 && income.inForecast !== false;
+  const incomeSaved = incomeOn ? yearlySavings(income) : 0;
+  const incomePension = incomeOn ? takeHome(income!).pension : 0;
+  const yearlyAdd = incomeOn ? convert(incomeSaved + incomePension, 'GBP', currency) : 0;
+  const forecast = useMemo(() => (showForecast ? buildForecast(holdings, currency, years, yearlyAdd) : null), [showForecast, holdings, currency, years, marketVersion, yearlyAdd]);
   const forecastSeries = useMemo(() => (forecast ? withForecast(series, forecast) : series), [forecast, series]);
   const rangeDesc = RANGES.find((r) => r.id === range)!.desc;
   const rangeLabel = RANGES.find((r) => r.id === range)!.label;
@@ -100,10 +112,20 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
             {showForecast && (
               forecast ? (
                 <div className="forecast-note">
-                  <div>If your trend continues, you could have <b>{formatMoney(forecast.endValue, currency, { decimals: false })}</b> in {forecast.years} years<b>*</b></div>
-                  <span className="muted small">*Projected from your average past performance ({forecast.method === 'compound' ? `${forecast.rate.toFixed(1)}% a year since ${formatDate(firstDate(holdings)!, 'long')}` : `about ${formatMoney(forecast.rate, currency, { decimals: false })} a year`}), shown as the dotted line. Based on past performance, which does not guarantee future performance. Includes money you add, not only returns</span>
+                  <div>{forecast.contribution > 0 ? 'With your trend and your savings' : 'If your trend continues'}, you could have <b>{formatMoney(forecast.endValue, currency, { decimals: false })}</b> in {forecast.years} years<b>*</b></div>
+                  {forecast.contribution > 0 ? (
+                    <div className="forecast-income">
+                      <Icon name="briefcase" size={14} />
+                      <span>Includes your income: <b>{formatMoney(convert(incomeSaved, 'GBP', currency), currency, { decimals: false })}</b> a year saved ({income?.savingsRate ?? 20}% of take-home pay){incomePension > 0 ? <> plus <b>{formatMoney(convert(incomePension, 'GBP', currency), currency, { decimals: false })}</b> into your pension</> : null}, adding <b>{formatMoney(forecast.fromIncome, currency, { decimals: false })}</b> by {new Date().getFullYear() + forecast.years}. <a href="#/income">Edit Income</a></span>
+                    </div>
+                  ) : (
+                    <div className="forecast-income muted"><Icon name="briefcase" size={14} /><span>Income not included. <a href="#/income">{income ? 'Turn On In Income' : 'Add Your Income'}</a> to add what you save each year</span></div>
+                  )}
+                  <span className="muted small">*{forecast.method === 'savings'
+                    ? `Your net worth today plus your yearly savings, with no growth assumed until there are a few weeks of history`
+                    : `Projected from your average past performance (${forecast.method === 'compound' ? `${forecast.rate.toFixed(1)}% a year since ${formatDate(firstDate(holdings)!, 'long')}` : `about ${formatMoney(forecast.rate, currency, { decimals: false })} a year`})${forecast.contribution > 0 ? `, plus your savings growing at ${forecast.contributionGrowth.toFixed(1)}% a year` : ''}`}, shown as the dotted line. Based on past performance, which does not guarantee future performance. Includes money you add, not only returns</span>
                 </div>
-              ) : <p className="muted small">Not enough history yet to project a trend. Add a few weeks of balances first</p>
+              ) : <p className="muted small">Not enough history yet to project a trend. Add a few weeks of balances first, or <a href="#/income">add your income</a></p>
             )}
             <GrowthStats change={ch} periodLabel={rangeLabel} note="Net worth growth includes money you add or withdraw, not only investment returns." />
           </>

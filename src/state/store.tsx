@@ -14,6 +14,7 @@ import { coinPriceUsd, cryptoIsFresh, loadCrypto, readCachedCrypto, type CryptoP
 import { convert } from '../config/currencies';
 import { todayISO } from '../domain/dates';
 import { isCurrency } from '../config/currencies';
+import type { IncomeProfile } from '../domain/ukTax';
 
 const THEME_KEY = 'cardinal.theme.v1';
 
@@ -66,6 +67,9 @@ interface Store {
   user: UserProfile | null;
   holdings: Holding[];
   currency: CurrencyCode;
+  /** Yearly income, if the user has entered it. */
+  income: IncomeProfile | undefined;
+  setIncome(i: IncomeProfile | undefined): void;
   range: RangeId;
   setRange(r: RangeId): void;
   setCurrency(c: CurrencyCode): void;
@@ -108,6 +112,7 @@ const Ctx = createContext<Store | null>(null);
 function clean(p: Portfolio): Portfolio {
   return {
     displayCurrency: isCurrency(p.displayCurrency) ? p.displayCurrency : 'GBP',
+    ...(p.income && p.income.salary > 0 ? { income: p.income } : {}),
     holdings: (p.holdings ?? []).map((h) => (isCurrency(h.currency) ? h : { ...h, currency: 'GBP' as CurrencyCode })),
   };
 }
@@ -268,6 +273,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       user,
       holdings: portfolio.holdings,
       currency: portfolio.displayCurrency,
+      income: portfolio.income,
+      setIncome: (i) =>
+        setPortfolio((p) => {
+          const { income: _old, ...rest } = p;
+          return i ? { ...rest, income: { ...i, updatedAt: new Date().toISOString() } } : rest;
+        }),
       range,
       setRange,
       setCurrency: (c) => setPortfolio((p) => ({ ...p, displayCurrency: c })),

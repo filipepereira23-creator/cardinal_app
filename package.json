@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "esbuild tests/ukTax.test.ts --bundle --platform=node --outfile=tests/.out.cjs --log-level=warning && node tests/.out.cjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

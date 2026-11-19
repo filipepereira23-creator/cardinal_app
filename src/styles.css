@@ -634,3 +634,31 @@ html[data-theme='dark'] .streak { color: #FFD43B; background: rgba(255, 212, 59,
 .modal-card { max-width: 380px; width: 100%; padding: 22px; }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 .conn-optin { margin-top: 12px; }
+
+/* v1.9 Income */
+.income-h { font-size: 18px; font-weight: 800; margin: 0 0 12px; letter-spacing: -0.01em; }
+.settings-section .income-h { margin: 0; }
+.income-per { font-size: 18px; font-weight: 700; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.income-strip { display: flex; height: 14px; border-radius: 8px; overflow: hidden; gap: 2px; margin-bottom: 14px; }
+.income-strip i { display: block; min-width: 3px; }
+.income-table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+.income-table th { font-size: 12px; font-weight: 600; color: var(--muted); text-align: right; padding: 0 0 6px; }
+.income-table td { padding: 9px 0; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.income-table td:first-child { text-align: left; font-weight: 600; white-space: normal; }
+.income-table td i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: 0; }
+.income-table tr.zero td { color: var(--muted); }
+.income-table tr.income-gross td { border-top: 0; }
+.income-table tr.income-net td { font-weight: 800; color: var(--red-dark); border-top: 2px solid var(--ink); font-size: 16px; }
+.income-table th + th, .income-table td + td { padding-left: 12px; }
+.income-more { margin-top: 12px; }
+.income-more summary { cursor: pointer; font-size: 14px; color: var(--red); font-weight: 600; }
+.income-more ul { margin: 10px 0 6px; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.income-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .income-grid { grid-template-columns: 1fr; } }
+.income-rate { display: grid; grid-template-columns: 1fr 110px; gap: 12px; align-items: center; }
+.income-rate input[type=range] { width: 100%; accent-color: var(--red); }
+.income-clear { align-self: flex-start; }
+.income-empty { padding: 8px 0 0; text-align: left; }
+.forecast-income { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.forecast-income svg { flex-shrink: 0; margin-top: 3px; color: var(--red); }
+@media (max-width: 480px) { .main-tabs a { font-size: 13px; padding: 8px 4px; white-space: normal; line-height: 1.2; display: flex; align-items: center; justify-content: center; } }
