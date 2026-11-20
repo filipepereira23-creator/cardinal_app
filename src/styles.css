@@ -683,3 +683,8 @@ html[data-theme='dark'] .streak { color: #FFD43B; background: rgba(255, 212, 59,
 .conn-pick-acc { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
 .conn-acc { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
 .conn-acc span.grow { flex: 1; font-weight: 600; }
+
+/* ── 20 Nov: main tab titles fixed in place (no sideways drifting), four equal columns ── */
+.main-tabs { overflow: hidden; scroll-snap-type: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+.main-tabs a { flex: none; min-width: 0; scroll-snap-align: none; white-space: normal; text-align: center; line-height: 1.2; display: flex; align-items: center; justify-content: center; padding: 10px 6px; font-size: 15px; }
+@media (max-width: 480px) { .main-tabs a { flex: none; padding: 8px 2px; font-size: 13px; white-space: normal; } }
