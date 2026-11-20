@@ -9,7 +9,7 @@ export function useRoute(): string[] {
     const on = () => {
       const next = read();
       // Switching between top level tabs keeps the scroll position; opening or leaving a detail page starts at the top.
-      const keep = prev.length <= 1 && next.length <= 1;
+      const keep = (prev.length <= 1 && next.length <= 1) || (prev[0] === 'dashboard' && next[0] === 'dashboard');
       prev = next;
       setParts(next);
       if (!keep) window.scrollTo(0, 0);
