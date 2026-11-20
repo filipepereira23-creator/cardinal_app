@@ -116,7 +116,7 @@ export function Dashboard({ tab }: { tab: CategoryId }) {
                   {forecast.contribution > 0 ? (
                     <div className="forecast-income">
                       <Icon name="briefcase" size={14} />
-                      <span>Includes your income: <b>{formatMoney(convert(incomeSaved, 'GBP', currency), currency, { decimals: false })}</b> a year saved ({income?.savingsRate ?? 20}% of take-home pay){incomePension > 0 ? <> plus <b>{formatMoney(convert(incomePension, 'GBP', currency), currency, { decimals: false })}</b> into your pension</> : null}, adding <b>{formatMoney(forecast.fromIncome, currency, { decimals: false })}</b> by {new Date().getFullYear() + forecast.years}. <a href="#/income">Edit Income</a></span>
+                      <span>Includes your income: <b>{formatMoney(convert(incomeSaved, 'GBP', currency), currency, { decimals: false })}</b> a year saved ({income?.savingsMode === 'amount' ? 'a fixed amount' : `${income?.savingsRate ?? 20}% of take-home pay`}){incomePension > 0 ? <> plus <b>{formatMoney(convert(incomePension, 'GBP', currency), currency, { decimals: false })}</b> into your pension</> : null}, adding <b>{formatMoney(forecast.fromIncome, currency, { decimals: false })}</b> by {new Date().getFullYear() + forecast.years}. <a href="#/income">Edit Income</a></span>
                     </div>
                   ) : (
                     <div className="forecast-income muted"><Icon name="briefcase" size={14} /><span>Income not included. <a href="#/income">{income ? 'Turn On In Income' : 'Add Your Income'}</a> to add what you save each year</span></div>
@@ -260,6 +260,7 @@ function CategoryPanel({ category }: { category: CategoryId }) {
         </div>
       ) : (
         <>
+          <div className="panel-range"><RangeTabs /></div>
           <MultiTrend series={series} lines={lines} ccy={currency} />
           <ul className="rows">
             {sorted.map((h) => (

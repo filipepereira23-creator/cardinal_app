@@ -22,7 +22,7 @@ export function Welcome() {
     <AuthFrame>
       <Bird className="welcome-bird" />
       <h1 className="welcome-title">Welcome To Cardinal</h1>
-      <p className="muted center">See everything you own in one number, and watch it move</p>
+      <p className="muted center">Your Net Worth In One Place</p>
       <div className="stack">
         <button className="btn btn-primary btn-lg" onClick={() => go('login')}>Log in</button>
         <button className="btn btn-outline btn-lg" onClick={() => go('register')}>Register now</button>

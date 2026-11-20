@@ -1,3 +1,4 @@
+import { useAvatar, setAvatar, resizeToAvatar } from '../components/Avatar';
 import { titleCase } from '../domain/titleCase';
 import { useState, type ReactNode } from 'react';
 import { useStore } from '../state/store';
@@ -55,6 +56,7 @@ function rateText(v: number, ccy: CurrencyCode): string {
 export function SettingsPage() {
   const { user, settings, updateSettings, updateProfile, currency, setCurrency, clearAll, deleteAccount, logout, holdings, fx, spot, refreshMarket } = useStore();
   const [refreshing, setRefreshing] = useState(false);
+  const photo = useAvatar(user?.id);
   const [p, setP] = useState({ firstName: user?.firstName ?? '', lastName: user?.lastName ?? '', email: user?.email ?? '' });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const dirty = p.firstName !== user?.firstName || p.lastName !== user?.lastName || p.email !== user?.email;
@@ -68,6 +70,21 @@ export function SettingsPage() {
       <h1 className="page-title">Settings</h1>
 
       <Section title="Profile" icon="user">
+        <div className="avatar-edit">
+          <span className="avatar">{photo ? <img src={photo} alt="Your profile" /> : (user ? (user.firstName[0] + (user.lastName[0] ?? '')).toUpperCase() : '')}</span>
+          <div>
+            <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+              Choose From Gallery
+              <input type="file" accept="image/*" hidden onChange={async (e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (!f || !user) return;
+                try { setAvatar(user.id, await resizeToAvatar(f)); setMsg({ ok: true, text: 'Profile picture saved' }); } catch (x: any) { setMsg({ ok: false, text: x.message }); }
+              }} />
+            </label>
+            {photo && user && <button type="button" className="link-btn" style={{ marginLeft: 10 }} onClick={() => setAvatar(user.id, null)}>Remove</button>}
+          </div>
+        </div>
         <form
           className="form"
           onSubmit={async (e) => {

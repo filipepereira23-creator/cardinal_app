@@ -53,6 +53,8 @@ export function IncomePage() {
   const [postgrad, setPostgrad] = useState(!!income?.postgrad);
   const [region, setRegion] = useState<TaxRegion>(income?.region ?? 'rUK');
   const [savings, setSavings] = useState(String(income?.savingsRate ?? DEFAULT_SAVINGS_RATE));
+  const [saveMode, setSaveMode] = useState<'pct' | 'amount'>(income?.savingsMode ?? 'pct');
+  const [saveAmt, setSaveAmt] = useState(income?.savingsAmount ? String(income.savingsAmount) : '');
   const [inForecast, setInForecast] = useState(income?.inForecast !== false);
 
   const profile: IncomeProfile | undefined = useMemo(() => {
@@ -67,9 +69,11 @@ export function IncomePage() {
       postgrad: loan !== 'none' && loan !== 'postgrad' ? postgrad : undefined,
       region,
       savingsRate: Math.min(100, num(savings)),
+      savingsMode: saveMode,
+      savingsAmount: saveMode === 'amount' ? num(saveAmt) : undefined,
       inForecast,
     };
-  }, [salary, bonus, pension, method, loan, postgrad, region, savings, inForecast]);
+  }, [salary, bonus, pension, method, loan, postgrad, region, savings, saveMode, saveAmt, inForecast]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -199,11 +203,22 @@ export function IncomePage() {
 
       <section className="card settings-section">
         <h2 className="income-h">In Your Forecast</h2>
-        <Field label="Savings rate" hint="The share of your take-home pay you save or invest each year">
-          <div className="income-rate">
-            <input type="range" min={0} max={80} step={1} value={Math.min(80, num(savings))} onChange={(e) => setSavings(e.target.value)} aria-label="Savings rate slider" />
-            <div className="amount-input"><input inputMode="decimal" value={savings} onChange={(e) => setSavings(e.target.value)} aria-label="Savings rate percent" /><span>%</span></div>
+        <Field label="How You Save" hint={saveMode === 'pct' ? 'The share of your take-home pay you save or invest each year' : 'The amount you save or invest each year, in pounds'}>
+          <div className="seg" role="radiogroup" aria-label="Savings entry">
+            <button type="button" role="radio" aria-checked={saveMode === 'pct'} className={saveMode === 'pct' ? 'on' : ''} onClick={() => setSaveMode('pct')}>Percentage</button>
+            <button type="button" role="radio" aria-checked={saveMode === 'amount'} className={saveMode === 'amount' ? 'on' : ''} onClick={() => setSaveMode('amount')}>Amount In £</button>
           </div>
+          {saveMode === 'pct' ? (
+            <div className="income-rate">
+              <input type="range" min={0} max={80} step={1} value={Math.min(80, num(savings))} onChange={(e) => setSavings(e.target.value)} aria-label="Savings rate slider" />
+              <div className="amount-input"><input inputMode="decimal" value={savings} onChange={(e) => setSavings(e.target.value)} aria-label="Savings rate percent" /><span>%</span></div>
+            </div>
+          ) : (
+            <div className="income-rate">
+              <div className="amount-input"><span>£</span><input inputMode="decimal" placeholder="0" value={saveAmt} onChange={(e) => setSaveAmt(e.target.value)} aria-label="Yearly savings in pounds" /><span>A Year</span></div>
+            </div>
+          )}
+          {r && <p className="muted small">{saveMode === 'pct' ? `That is ${gbp(saved)} a year` : `That is ${r.takeHome > 0 ? ((saved / r.takeHome) * 100).toFixed(1) : '0'}% of your take-home pay`}</p>}
         </Field>
         {r ? (
           <div className="forecast-note">

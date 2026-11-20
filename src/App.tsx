@@ -13,6 +13,7 @@ import { InfoPage } from './pages/Info';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Bird } from './components/Logo';
+import { useSwipeTabs } from './state/swipe';
 import type { CategoryId } from './domain/types';
 
 const CATS: CategoryId[] = ['cash', 'investment', 'crypto', 'assets', 'debts'];
@@ -22,6 +23,7 @@ export default function App() {
   const [page, arg] = useRoute();
   const authPage = !page || page === 'welcome' || page === 'login' || page === 'register';
   const infoPage = page === 'info';
+  useSwipeTabs(!!user, page, arg);
 
   useEffect(() => {
     if (!ready) return;

@@ -38,6 +38,10 @@ export interface IncomeProfile {
   region?: TaxRegion;
   /** % of take-home saved or invested each year (used by the forecast). */
   savingsRate?: number;
+  /** How the savings are entered: a % of take-home pay, or a fixed yearly amount in GBP. */
+  savingsMode?: 'pct' | 'amount';
+  /** Fixed yearly saving in GBP, used when savingsMode is 'amount'. */
+  savingsAmount?: number;
   /** Whether the forecast should include savings from income. */
   inForecast?: boolean;
   updatedAt?: string;
@@ -174,6 +178,7 @@ export function takeHome(p: IncomeProfile): TakeHome {
 /** Yearly amount saved from income for the forecast, in GBP. */
 export function yearlySavings(p: IncomeProfile | undefined): number {
   if (!p || !(p.salary > 0) || p.inForecast === false) return 0;
+  if (p.savingsMode === 'amount') return r2(Math.max(0, p.savingsAmount ?? 0));
   const rate = Math.min(100, Math.max(0, p.savingsRate ?? DEFAULT_SAVINGS_RATE));
   return r2((takeHome(p).takeHome * rate) / 100);
 }

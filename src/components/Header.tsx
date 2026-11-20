@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAvatar } from './Avatar';
 import { FlyingBird } from './Logo';
 import { CurrencySelect } from './CurrencySelect';
 import { Icon } from './Icon';
@@ -8,6 +9,7 @@ import { go } from '../state/router';
 export function Header() {
   const { user, logout, loadSample, clearAll, holdings, settings, updateSettings } = useStore();
   const hidden = settings.hideBalances;
+  const photo = useAvatar(user?.id);
   const [open, setOpen] = useState(false);
   const initials = user ? (user.firstName[0] + (user.lastName[0] ?? '')).toUpperCase() : '';
   return (
@@ -28,7 +30,7 @@ export function Header() {
           </button>
           <a href="#/settings" className="icon-btn header-gear" aria-label="Settings" title="Settings"><Icon name="gear" size={20} /></a>
           <div className="menu-wrap">
-            <button className="avatar" onClick={() => setOpen((o) => !o)} aria-label="Account menu">{initials}</button>
+            <button className="avatar" onClick={() => setOpen((o) => !o)} aria-label="Account menu">{photo ? <img src={photo} alt="" /> : initials}</button>
             {open && (
               <>
                 <div className="menu-scrim" onClick={() => setOpen(false)} />
